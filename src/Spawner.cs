@@ -17,6 +17,7 @@
 namespace Spawnr
 {
     using System;
+    using System.Collections;
     using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Diagnostics;
@@ -44,20 +45,21 @@ namespace Spawnr
             Spawner.Default.Spawn(path, args, stdoutSelector, stderrSelector);
     }
 
-    public interface ISpawnable<out T> : IObservable<T>
+    public partial interface ISpawnable<out T> : IObservable<T>,
+                                                 IEnumerable<T>
     {
         SpawnOptions Options { get; }
         ISpawnable<T> WithOptions(SpawnOptions options);
     }
 
-    static class Spawnable
+    static partial class Spawnable
     {
         public static ISpawnable<T>
             Create<T>(SpawnOptions options,
                       Func<IObserver<T>, SpawnOptions, IDisposable> subscriber) =>
             new Implementation<T>(options, subscriber);
 
-        sealed class Implementation<T> : ISpawnable<T>
+        sealed partial class Implementation<T> : ISpawnable<T>
         {
             readonly Func<IObserver<T>, SpawnOptions, IDisposable> _subscriber;
 
@@ -75,6 +77,11 @@ namespace Spawnr
 
             public IDisposable Subscribe(IObserver<T> observer) =>
                 _subscriber(observer, Options);
+
+            public IEnumerator<T> GetEnumerator() =>
+                this.ToEnumerable().GetEnumerator();
+
+            IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
         }
     }
 
@@ -209,3 +216,54 @@ namespace Spawnr
         }
     }
 }
+
+#if ASYNC_STREAMS
+
+namespace Spawnr
+{
+    using System;
+    using System.Collections.Generic;
+    using System.Collections.Concurrent;
+    using System.Diagnostics;
+    using System.Threading;
+
+    partial interface ISpawnable<out T> : IAsyncEnumerable<T> {}
+
+    partial class Spawnable
+    {
+        partial class Implementation<T>
+        {
+            public async IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
+            {
+                var completed = false;
+                var error = (Exception?)null;
+                var queue = new ConcurrentQueue<T>();
+                var semaphore = new SemaphoreSlim(initialCount: 0);
+
+                using var subscription =
+                    this.Subscribe(
+                        item => { queue.Enqueue(item); semaphore.Release(); },
+                        err  => { error = err        ; semaphore.Release(); },
+                        ()   => { completed = true   ; semaphore.Release(); });
+
+                while (true)
+                {
+                    await semaphore.WaitAsync(cancellationToken)
+                                   .ConfigureAwait(false);
+
+                    if (completed)
+                        break;
+
+                    if (error is {} err)
+                        throw err;
+
+                    var succeeded = queue.TryDequeue(out var item);
+                    Debug.Assert(succeeded);
+                    yield return item;
+                }
+            }
+        }
+    }
+}
+
+#endif // ASYNC_STREAMS
