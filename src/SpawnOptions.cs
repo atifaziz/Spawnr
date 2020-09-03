@@ -23,7 +23,6 @@ namespace Spawnr
     using System.Diagnostics;
     using System.Linq;
     using System.Runtime.InteropServices;
-    using Mannex.Collections.Generic;
 
     public sealed class SpawnOptions
     {
@@ -31,7 +30,7 @@ namespace Spawnr
             new SpawnOptions(ProgramArguments.Empty,
                              System.Environment.CurrentDirectory,
                              ImmutableArray.CreateRange(from DictionaryEntry e in System.Environment.GetEnvironmentVariables()
-                                                        select ((string)e.Key).AsKeyTo((string)e.Value)));
+                                                        select KeyValuePair.Create((string)e.Key, (string)e.Value)));
 
         SpawnOptions(ProgramArguments arguments, string workingDirectory,
                      ImmutableArray<KeyValuePair<string, string>> environment)
@@ -94,7 +93,7 @@ namespace Spawnr
             if (name.Length == 0) throw new ArgumentException(null, nameof(name));
             if (value is null) throw new ArgumentNullException(nameof(value));
 
-            return options.WithEnvironment(options.Environment.Add(name.AsKeyTo(value)));
+            return options.WithEnvironment(options.Environment.Add(KeyValuePair.Create(name, value)));
         }
 
         public static SpawnOptions ClearEnvironment(this SpawnOptions options)

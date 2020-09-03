@@ -18,14 +18,11 @@ namespace Spawnr
 {
     using System;
     using System.Collections;
-    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.IO;
+    using System.Reactive.Disposables;
     using System.Reactive.Linq;
-    using System.Threading.Tasks;
-    using Mannex.Collections.Generic;
-    using Mannex.Diagnostics;
 
     public static class SpawnModule
     {
@@ -131,8 +128,8 @@ namespace Spawnr
             Spawn<T>(this ISpawner spawner,
                      string path, ProgramArguments args,
                      T stdoutKey, T stderrKey) =>
-            spawner.Spawn(path, args, stdout => stdoutKey.AsKeyTo(stdout),
-                                      stderr => stderrKey.AsKeyTo(stderr));
+            spawner.Spawn(path, args, stdout => KeyValuePair.Create(stdoutKey, stdout),
+                                      stderr => KeyValuePair.Create(stderrKey, stderr));
 
         public static ISpawnable<T>
             Spawn<T>(this ISpawner spawner, string path, ProgramArguments args,
@@ -155,64 +152,66 @@ namespace Spawnr
             public IObservable<T> Spawn<T>(string path, SpawnOptions options,
                                            Func<string, T>? stdoutSelector,
                                            Func<string, T>? stderrSelector) =>
-                SpawnCore(path, options, stdoutSelector, stderrSelector).ToObservable();
-        }
-
-        static IEnumerable<T> SpawnCore<T>(string path, SpawnOptions options,
-                                           Func<string, T>? stdoutSelector,
-                                           Func<string, T>? stderrSelector)
-        {
-            var psi = new ProcessStartInfo(path, options.Arguments.ToString())
-            {
-                CreateNoWindow         = true,
-                UseShellExecute        = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError  = true,
-            };
-
-            options.Update(psi);
-
-            using var process = Process.Start(psi)!;
-
-            var bc = new BlockingCollection<(T Result, Exception? Error)>();
-            var drainer =
-                process.BeginReadLineAsync(stdoutSelector is {} outf ? (stdout => bc.Add(ValueTuple.Create(outf(stdout), (Exception?)null))) : (Action<string>?)null,
-                                           stderrSelector is {} errf ? (stderr => bc.Add(ValueTuple.Create(errf(stderr), (Exception?)null))) : (Action<string>?)null);
-
-            Task.Run(async () => // ReSharper disable AccessToDisposedClosure
-            {
-                try
+                Observable.Create<T>(observer =>
                 {
-                    var pid = process.Id;
-                    var error = await
-                        process.AsTask(dispose: false,
-                                       p => p.ExitCode != 0 ? new Exception($"Process \"{Path.GetFileName(path)}\" (launched as the ID {pid}) ended with the non-zero exit code {p.ExitCode}.")
-                                                            : null,
-                                       e => e,
-                                       e => e)
-                               .ConfigureAwait(false);
+                    var psi = new ProcessStartInfo(path, options.Arguments.ToString())
+                    {
+                        CreateNoWindow         = true,
+                        UseShellExecute        = false,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError  = true,
+                    };
 
-                    await drainer(null).ConfigureAwait(false);
+                    options.Update(psi);
 
-                    if (error != null)
-                        throw error;
+                    Process process = new Process
+                    {
+                        StartInfo = psi,
+                        EnableRaisingEvents = true,
+                    };
 
-                    bc.CompleteAdding();
-                }
-                catch (Exception e)
-                {
-                    bc.Add((default(T), e));
-                }
+                    var pid = -1;
+                    var killed = false;
+                    var exited = false;
 
-                // ReSharper restore AccessToDisposedClosure
-            });
+                    process.OutputDataReceived += CreateDataEventHandler(stdoutSelector);
+                    process.ErrorDataReceived += CreateDataEventHandler(stderrSelector);
+                    process.Exited += delegate { OnExited(); };
 
-            foreach (var e in bc.GetConsumingEnumerable())
-            {
-                if (e.Error != null)
-                    throw e.Error;
-                yield return e.Result;
-            }
+                    process.Start();
+                    pid = process.Id;
+
+                    process.BeginOutputReadLine();
+                    process.BeginErrorReadLine();
+
+                    return Disposable.Create(() =>
+                    {
+                        if (exited || killed)
+                            return;
+                        killed = true;
+                        process.TryKill(out var _);
+                    });
+
+                    DataReceivedEventHandler CreateDataEventHandler(Func<string, T>? selector) =>
+                        (_, args) =>
+                        {
+                            Debug.Assert(!exited);
+                            if (!killed && args.Data is {} line && selector is {} f)
+                                observer.OnNext(f(line));
+                        };
+
+                    void OnExited()
+                    {
+                        exited = true;
+                        using var _ = process; // dispose
+                        if (killed)
+                            return;
+                        if (process.ExitCode == 0)
+                            observer.OnCompleted();
+                        else
+                            observer.OnError(new Exception($"Process \"{Path.GetFileName(path)}\" (launched as the ID {pid}) ended with the non-zero exit code {process.ExitCode}."));
+                    }
+                });
         }
     }
 }
