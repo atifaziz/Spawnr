@@ -24,6 +24,8 @@
 //
 #endregion
 
+#nullable disable
+
 // https://github.com/dotnet/corefx/blob/3c127cf75ae1915b2b2cd7e898ac9f57524a9c79/src/Common/src/CoreLib/System/Text/StringBuilderCache.cs
 
 namespace System.Text

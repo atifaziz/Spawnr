@@ -39,8 +39,8 @@ namespace Spawnr
         public static ISpawnObservable<T>
             Spawn<T>(string path,
                      ProgramArguments args,
-                     Func<string, T> stdoutSelector,
-                     Func<string, T> stderrSelector) =>
+                     Func<string, T>? stdoutSelector,
+                     Func<string, T>? stderrSelector) =>
             Spawner.Default.Spawn(path, args, stdoutSelector, stderrSelector);
     }
 
@@ -81,8 +81,8 @@ namespace Spawnr
     public interface ISpawner
     {
         IObservable<T> Spawn<T>(string path, SpawnOptions options,
-                                Func<string, T> stdoutSelector,
-                                Func<string, T> stderrSelector);
+                                Func<string, T>? stdoutSelector,
+                                Func<string, T>? stderrSelector);
     }
 
     public static class SpawnerExtensions
@@ -129,8 +129,8 @@ namespace Spawnr
 
         public static ISpawnObservable<T>
             Spawn<T>(this ISpawner spawner, string path, ProgramArguments args,
-                     Func<string, T> stdoutSelector,
-                     Func<string, T> stderrSelector) =>
+                     Func<string, T>? stdoutSelector,
+                     Func<string, T>? stderrSelector) =>
             SpawnObservable.Create<T>(SpawnOptions.Create().WithArguments(args),
                                       (observer, options) =>
                                           spawner.Spawn(path, options,
@@ -146,14 +146,14 @@ namespace Spawnr
         sealed class Implementation : ISpawner
         {
             public IObservable<T> Spawn<T>(string path, SpawnOptions options,
-                                           Func<string, T> stdoutSelector,
-                                           Func<string, T> stderrSelector) =>
+                                           Func<string, T>? stdoutSelector,
+                                           Func<string, T>? stderrSelector) =>
                 SpawnCore(path, options, stdoutSelector, stderrSelector).ToObservable();
         }
 
         static IEnumerable<T> SpawnCore<T>(string path, SpawnOptions options,
-                                           Func<string, T> stdoutSelector,
-                                           Func<string, T> stderrSelector)
+                                           Func<string, T>? stdoutSelector,
+                                           Func<string, T>? stderrSelector)
         {
             var psi = new ProcessStartInfo(path, options.Arguments.ToString())
             {
@@ -165,13 +165,12 @@ namespace Spawnr
 
             options.Update(psi);
 
-            using var process = Process.Start(psi);
-            Debug.Assert(process != null);
+            using var process = Process.Start(psi)!;
 
-            var bc = new BlockingCollection<(T Result, Exception Error)>();
+            var bc = new BlockingCollection<(T Result, Exception? Error)>();
             var drainer =
-                process.BeginReadLineAsync(stdoutSelector != null ? (stdout => bc.Add(ValueTuple.Create(stdoutSelector(stdout), (Exception)null))) : (Action<string>)null,
-                                           stderrSelector != null ? (stderr => bc.Add(ValueTuple.Create(stderrSelector(stderr), (Exception)null))) : (Action<string>)null);
+                process.BeginReadLineAsync(stdoutSelector is {} outf ? (stdout => bc.Add(ValueTuple.Create(outf(stdout), (Exception?)null))) : (Action<string>?)null,
+                                           stderrSelector is {} errf ? (stderr => bc.Add(ValueTuple.Create(errf(stderr), (Exception?)null))) : (Action<string>?)null);
 
             Task.Run(async () => // ReSharper disable AccessToDisposedClosure
             {

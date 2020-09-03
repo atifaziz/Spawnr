@@ -30,11 +30,11 @@ namespace Spawnr
     {
         public static readonly ProgramArguments Empty = new ProgramArguments(null, ImmutableArray<string>.Empty);
 
-        readonly string _line;
-        List<string> _parsedLineArgs;
+        readonly string? _line;
+        List<string>? _parsedLineArgs;
         readonly ImmutableArray<string> _args;
 
-        ProgramArguments(string line, ImmutableArray<string> args)
+        ProgramArguments(string? line, ImmutableArray<string> args)
         {
             Debug.Assert(args.IsDefault || line == null);
             _line = line;
