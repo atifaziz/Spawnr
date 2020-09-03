@@ -28,15 +28,15 @@ namespace Spawnr
 
     public static class SpawnModule
     {
-        public static ISpawnObservable<string> Spawn(string path, ProgramArguments args) =>
+        public static ISpawnable<string> Spawn(string path, ProgramArguments args) =>
             Spawner.Default.Spawn(path, args, output => output, null);
 
-        public static ISpawnObservable<KeyValuePair<T, string>>
+        public static ISpawnable<KeyValuePair<T, string>>
             Spawn<T>(string path, ProgramArguments args,
                      T stdoutKey, T stderrKey) =>
             Spawner.Default.Spawn(path, args, stdoutKey, stderrKey);
 
-        public static ISpawnObservable<T>
+        public static ISpawnable<T>
             Spawn<T>(string path,
                      ProgramArguments args,
                      Func<string, T>? stdoutSelector,
@@ -44,20 +44,20 @@ namespace Spawnr
             Spawner.Default.Spawn(path, args, stdoutSelector, stderrSelector);
     }
 
-    public interface ISpawnObservable<out T> : IObservable<T>
+    public interface ISpawnable<out T> : IObservable<T>
     {
         SpawnOptions Options { get; }
-        ISpawnObservable<T> WithOptions(SpawnOptions options);
+        ISpawnable<T> WithOptions(SpawnOptions options);
     }
 
-    static class SpawnObservable
+    static class Spawnable
     {
-        public static ISpawnObservable<T>
+        public static ISpawnable<T>
             Create<T>(SpawnOptions options,
                       Func<IObserver<T>, SpawnOptions, IDisposable> subscriber) =>
             new Implementation<T>(options, subscriber);
 
-        sealed class Implementation<T> : ISpawnObservable<T>
+        sealed class Implementation<T> : ISpawnable<T>
         {
             readonly Func<IObserver<T>, SpawnOptions, IDisposable> _subscriber;
 
@@ -70,7 +70,7 @@ namespace Spawnr
 
             public SpawnOptions Options { get; }
 
-            public ISpawnObservable<T> WithOptions(SpawnOptions value) =>
+            public ISpawnable<T> WithOptions(SpawnOptions value) =>
                 ReferenceEquals(Options, value) ? this : Create(value, _subscriber);
 
             public IDisposable Subscribe(IObserver<T> observer) =>
@@ -87,56 +87,56 @@ namespace Spawnr
 
     public static class SpawnerExtensions
     {
-        public static ISpawnObservable<T> AddArgument<T>(this ISpawnObservable<T> source, string value) =>
+        public static ISpawnable<T> AddArgument<T>(this ISpawnable<T> source, string value) =>
             source.WithOptions(source.Options.AddArgument(value));
 
-        public static ISpawnObservable<T> AddArgument<T>(this ISpawnObservable<T> source, params string[] values) =>
+        public static ISpawnable<T> AddArgument<T>(this ISpawnable<T> source, params string[] values) =>
             source.WithOptions(source.Options.AddArgument(values));
 
-        public static ISpawnObservable<T> AddArguments<T>(this ISpawnObservable<T> source, IEnumerable<string> values) =>
+        public static ISpawnable<T> AddArguments<T>(this ISpawnable<T> source, IEnumerable<string> values) =>
             source.WithOptions(source.Options.AddArguments(values));
 
-        public static ISpawnObservable<T> ClearArguments<T>(this ISpawnObservable<T> source) =>
+        public static ISpawnable<T> ClearArguments<T>(this ISpawnable<T> source) =>
             source.WithOptions(source.Options.ClearArguments());
 
-        public static ISpawnObservable<T> SetCommandLine<T>(this ISpawnObservable<T> source, string value) =>
+        public static ISpawnable<T> SetCommandLine<T>(this ISpawnable<T> source, string value) =>
             source.WithOptions(source.Options.SetCommandLine(value));
 
-        public static ISpawnObservable<T> ClearEnvironment<T>(this ISpawnObservable<T> source) =>
+        public static ISpawnable<T> ClearEnvironment<T>(this ISpawnable<T> source) =>
             source.WithOptions(source.Options.ClearEnvironment());
 
-        public static ISpawnObservable<T> AddEnvironment<T>(this ISpawnObservable<T> source, string name, string value) =>
+        public static ISpawnable<T> AddEnvironment<T>(this ISpawnable<T> source, string name, string value) =>
             source.WithOptions(source.Options.AddEnvironment(name, value));
 
-        public static ISpawnObservable<T> SetEnvironment<T>(this ISpawnObservable<T> source, string name, string value) =>
+        public static ISpawnable<T> SetEnvironment<T>(this ISpawnable<T> source, string name, string value) =>
             source.WithOptions(source.Options.SetEnvironment(name, value));
 
-        public static ISpawnObservable<T> UnsetEnvironment<T>(this ISpawnObservable<T> source, string name) =>
+        public static ISpawnable<T> UnsetEnvironment<T>(this ISpawnable<T> source, string name) =>
             source.WithOptions(source.Options.UnsetEnvironment(name));
 
-        public static ISpawnObservable<T> WorkingDirectory<T>(this ISpawnObservable<T> source, string value) =>
+        public static ISpawnable<T> WorkingDirectory<T>(this ISpawnable<T> source, string value) =>
             source.WithOptions(source.Options.WithWorkingDirectory(value));
 
-        public static ISpawnObservable<string> Spawn(this ISpawner spawner, string path, ProgramArguments args) =>
+        public static ISpawnable<string> Spawn(this ISpawner spawner, string path, ProgramArguments args) =>
             spawner.Spawn(path, args, output => output, null);
 
-        public static ISpawnObservable<KeyValuePair<T, string>>
+        public static ISpawnable<KeyValuePair<T, string>>
             Spawn<T>(this ISpawner spawner,
                      string path, ProgramArguments args,
                      T stdoutKey, T stderrKey) =>
             spawner.Spawn(path, args, stdout => stdoutKey.AsKeyTo(stdout),
                                       stderr => stderrKey.AsKeyTo(stderr));
 
-        public static ISpawnObservable<T>
+        public static ISpawnable<T>
             Spawn<T>(this ISpawner spawner, string path, ProgramArguments args,
                      Func<string, T>? stdoutSelector,
                      Func<string, T>? stderrSelector) =>
-            SpawnObservable.Create<T>(SpawnOptions.Create().WithArguments(args),
-                                      (observer, options) =>
-                                          spawner.Spawn(path, options,
-                                                        stdoutSelector,
-                                                        stderrSelector)
-                                                 .Subscribe(observer));
+            Spawnable.Create<T>(SpawnOptions.Create().WithArguments(args),
+                                (observer, options) =>
+                                    spawner.Spawn(path, options,
+                                                  stdoutSelector,
+                                                  stderrSelector)
+                                           .Subscribe(observer));
     }
 
     public static class Spawner
