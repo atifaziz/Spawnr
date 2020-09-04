@@ -154,20 +154,47 @@ namespace Spawnr
                                            Func<string, T>? stderrSelector) =>
                 Observable.Create<T>(observer =>
                     Spawner.Spawn(path, options,
+                                  psi => new Process(new System.Diagnostics.Process { StartInfo = psi }),
                                   stdoutSelector, stderrSelector,
                                   observer));
         }
 
+        [Flags]
+        enum ControlFlags
+        {
+            None           = 0b_0000,
+            Exited         = 0b_0001,
+            Killed         = 0b_0010,
+            OutputReceived = 0b_0100,
+            ErrorReceived  = 0b_1000,
+            Mask           = 0b_1111,
+        };
+
         sealed class Control
         {
-            public bool Exited;
-            public bool Killed;
+            ControlFlags _flags;
+
+            public bool Exited         { get => this[ControlFlags.Exited        ]; set => this[ControlFlags.Exited        ] = value; }
+            public bool Killed         { get => this[ControlFlags.Killed        ]; set => this[ControlFlags.Killed        ] = value; }
+            public bool OutputReceived { get => this[ControlFlags.OutputReceived]; set => this[ControlFlags.OutputReceived] = value; }
+            public bool ErrorReceived  { get => this[ControlFlags.ErrorReceived ]; set => this[ControlFlags.ErrorReceived ] = value; }
+
+            public bool this[ControlFlags flags]
+            {
+                get => (_flags & flags) == flags;
+                set => Set(flags, value);
+            }
+
+            void Reset(ControlFlags flags) => _flags &= (~flags & ControlFlags.Mask);
+            void Set(ControlFlags flags) => _flags |= flags;
+            void Set(ControlFlags flags, bool value) { if (value) Set(flags); else Reset(flags); }
         }
 
-        static IDisposable Spawn<T>(string path, SpawnOptions options,
-                                    Func<string, T>? stdoutSelector,
-                                    Func<string, T>? stderrSelector,
-                                    IObserver<T> observer)
+        internal static IDisposable Spawn<T>(string path, SpawnOptions options,
+                                             Func<ProcessStartInfo, IProcess> processFactory,
+                                             Func<string, T>? stdoutSelector,
+                                             Func<string, T>? stderrSelector,
+                                             IObserver<T> observer)
         {
             var psi = new ProcessStartInfo(path, options.Arguments.ToString())
             {
@@ -179,17 +206,14 @@ namespace Spawnr
 
             options.Update(psi);
 
-            Process process = new Process
-            {
-                StartInfo = psi,
-                EnableRaisingEvents = true,
-            };
+            IProcess process = processFactory(psi);
+            process.EnableRaisingEvents = true;
 
             var pid = -1;
             var control = new Control();
 
-            process.OutputDataReceived += CreateDataEventHandler(stdoutSelector);
-            process.ErrorDataReceived += CreateDataEventHandler(stderrSelector);
+            process.OutputDataReceived += CreateDataEventHandler(ControlFlags.OutputReceived, stdoutSelector);
+            process.ErrorDataReceived += CreateDataEventHandler(ControlFlags.ErrorReceived, stderrSelector);
             process.Exited += delegate { OnExited(control); };
 
             process.Start();
@@ -209,31 +233,49 @@ namespace Spawnr
                 process.TryKill(out var _);
             });
 
-            DataReceivedEventHandler CreateDataEventHandler(Func<string, T>? selector) =>
+            DataReceivedEventHandler CreateDataEventHandler(ControlFlags flags, Func<string, T>? selector) =>
                 (_, args) =>
                 {
-                    bool killed, exited;
+                    bool killed, exited, outputsReceived;
                     lock (control)
                     {
+                        control[flags] = true;
                         killed = control.Killed;
                         exited = control.Exited;
+                        outputsReceived = control.OutputReceived && control.ErrorReceived;
                     }
-                    Debug.Assert(!exited);
-                    if (!killed && args.Data is {} line && selector is {} f)
-                        observer.OnNext(f(line));
+                    if (killed)
+                    {
+                        if (outputsReceived)
+                            process.Dispose();
+                    }
+                    else if (args.Data is {} line)
+                    {
+                        if (selector is {} f)
+                            observer.OnNext(f(line));
+                    }
+                    else if (exited && outputsReceived)
+                    {
+                        Conclude();
+                    }
                 };
 
             void OnExited(Control control)
             {
-                bool killed;
+                bool killed, outputsReceived;
                 lock (control)
                 {
                     control.Exited = true;
                     killed = control.Killed;
+                    outputsReceived = control.OutputReceived && control.ErrorReceived;
                 }
-                using var _ = process; // dispose
-                if (killed)
+                if (killed || !outputsReceived)
                     return;
+                Conclude();
+            }
+
+            void Conclude()
+            {
                 if (process.ExitCode == 0)
                     observer.OnCompleted();
                 else
