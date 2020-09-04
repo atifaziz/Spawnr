@@ -153,65 +153,73 @@ namespace Spawnr
                                            Func<string, T>? stdoutSelector,
                                            Func<string, T>? stderrSelector) =>
                 Observable.Create<T>(observer =>
+                    Spawner.Spawn(path, options,
+                                  stdoutSelector, stderrSelector,
+                                  observer));
+        }
+
+        static IDisposable Spawn<T>(string path, SpawnOptions options,
+                                    Func<string, T>? stdoutSelector,
+                                    Func<string, T>? stderrSelector,
+                                    IObserver<T> observer)
+        {
+            var psi = new ProcessStartInfo(path, options.Arguments.ToString())
+            {
+                CreateNoWindow         = true,
+                UseShellExecute        = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError  = true,
+            };
+
+            options.Update(psi);
+
+            Process process = new Process
+            {
+                StartInfo = psi,
+                EnableRaisingEvents = true,
+            };
+
+            var pid = -1;
+            var killed = false;
+            var exited = false;
+
+            process.OutputDataReceived += CreateDataEventHandler(stdoutSelector);
+            process.ErrorDataReceived += CreateDataEventHandler(stderrSelector);
+            process.Exited += delegate { OnExited(); };
+
+            process.Start();
+            pid = process.Id;
+
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+
+            return Disposable.Create(() =>
+            {
+                if (exited || killed)
+                    return;
+                killed = true;
+                process.TryKill(out var _);
+            });
+
+            DataReceivedEventHandler CreateDataEventHandler(Func<string, T>? selector) =>
+                (_, args) =>
                 {
-                    var psi = new ProcessStartInfo(path, options.Arguments.ToString())
-                    {
-                        CreateNoWindow         = true,
-                        UseShellExecute        = false,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError  = true,
-                    };
+                    Debug.Assert(!exited);
+                    if (!killed && args.Data is {} line && selector is {} f)
+                        observer.OnNext(f(line));
+                };
 
-                    options.Update(psi);
-
-                    Process process = new Process
-                    {
-                        StartInfo = psi,
-                        EnableRaisingEvents = true,
-                    };
-
-                    var pid = -1;
-                    var killed = false;
-                    var exited = false;
-
-                    process.OutputDataReceived += CreateDataEventHandler(stdoutSelector);
-                    process.ErrorDataReceived += CreateDataEventHandler(stderrSelector);
-                    process.Exited += delegate { OnExited(); };
-
-                    process.Start();
-                    pid = process.Id;
-
-                    process.BeginOutputReadLine();
-                    process.BeginErrorReadLine();
-
-                    return Disposable.Create(() =>
-                    {
-                        if (exited || killed)
-                            return;
-                        killed = true;
-                        process.TryKill(out var _);
-                    });
-
-                    DataReceivedEventHandler CreateDataEventHandler(Func<string, T>? selector) =>
-                        (_, args) =>
-                        {
-                            Debug.Assert(!exited);
-                            if (!killed && args.Data is {} line && selector is {} f)
-                                observer.OnNext(f(line));
-                        };
-
-                    void OnExited()
-                    {
-                        exited = true;
-                        using var _ = process; // dispose
-                        if (killed)
-                            return;
-                        if (process.ExitCode == 0)
-                            observer.OnCompleted();
-                        else
-                            observer.OnError(new Exception($"Process \"{Path.GetFileName(path)}\" (launched as the ID {pid}) ended with the non-zero exit code {process.ExitCode}."));
-                    }
-                });
+            void OnExited()
+            {
+                exited = true;
+                using var _ = process; // dispose
+                if (killed)
+                    return;
+                if (process.ExitCode == 0)
+                    observer.OnCompleted();
+                else
+                    observer.OnError(new Exception($"Process \"{Path.GetFileName(path)}\" (launched as the ID {pid}) ended with the non-zero exit code {process.ExitCode}."));
+            }
         }
     }
 }
