@@ -23,6 +23,7 @@ namespace Spawnr
     using System.Diagnostics;
     using System.Linq;
     using System.Runtime.InteropServices;
+    using SysProcess = System.Diagnostics.Process;
 
     public sealed class SpawnOptions
     {
@@ -30,22 +31,27 @@ namespace Spawnr
             new SpawnOptions(ProgramArguments.Empty,
                              System.Environment.CurrentDirectory,
                              ImmutableArray.CreateRange(from DictionaryEntry e in System.Environment.GetEnvironmentVariables()
-                                                        select KeyValuePair.Create((string)e.Key, (string)e.Value)));
+                                                        select KeyValuePair.Create((string)e.Key, (string)e.Value)),
+                             psi => new Process(new SysProcess { StartInfo = psi }));
 
         SpawnOptions(ProgramArguments arguments, string workingDirectory,
-                     ImmutableArray<KeyValuePair<string, string>> environment)
+                     ImmutableArray<KeyValuePair<string, string>> environment,
+                     Func<ProcessStartInfo, IProcess> processFactory)
         {
             Arguments = arguments;
             WorkingDirectory = workingDirectory;
             Environment = environment;
+            ProcessFactory = processFactory;
         }
 
         public SpawnOptions(SpawnOptions other) :
-            this(other.Arguments, other.WorkingDirectory, other.Environment) {}
+            this(other.Arguments, other.WorkingDirectory, other.Environment,
+                 other.ProcessFactory) {}
 
         public ProgramArguments Arguments { get; private set; }
         public string WorkingDirectory { get; private set; }
         public ImmutableArray<KeyValuePair<string, string>> Environment { get; private set; }
+        internal Func<ProcessStartInfo, IProcess> ProcessFactory { get; private set; }
 
         public SpawnOptions WithEnvironment(ImmutableArray<KeyValuePair<string, string>> value) =>
             Environment.IsEmpty && value.IsEmpty ? this : new SpawnOptions(this) { Environment = value };
@@ -59,6 +65,11 @@ namespace Spawnr
             => value is null ? throw new ArgumentNullException(nameof(value))
              : value == Arguments || value.Count == 0 && Arguments.Count == 0 ? this
              : new SpawnOptions(this) { Arguments = value };
+
+        internal SpawnOptions WithProcessFactory(Func<ProcessStartInfo, IProcess> value)
+            => value is null ? throw new ArgumentNullException(nameof(value))
+             : value == ProcessFactory ? this
+             : new SpawnOptions(this) { ProcessFactory = value };
     }
 
     public static class SpawnOptionsExtensions

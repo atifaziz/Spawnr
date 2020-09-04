@@ -156,7 +156,6 @@ namespace Spawnr
                                            Func<string, T>? stderrSelector) =>
                 Observable.Create<T>(observer =>
                     Spawner.Spawn(path, options,
-                                  psi => new Process(new System.Diagnostics.Process { StartInfo = psi }),
                                   stdoutSelector, stderrSelector,
                                   observer));
         }
@@ -192,11 +191,10 @@ namespace Spawnr
             void Set(ControlFlags flags, bool value) { if (value) Set(flags); else Reset(flags); }
         }
 
-        internal static IDisposable Spawn<T>(string path, SpawnOptions options,
-                                             Func<ProcessStartInfo, IProcess> processFactory,
-                                             Func<string, T>? stdoutSelector,
-                                             Func<string, T>? stderrSelector,
-                                             IObserver<T> observer)
+        static IDisposable Spawn<T>(string path, SpawnOptions options,
+                                    Func<string, T>? stdoutSelector,
+                                    Func<string, T>? stderrSelector,
+                                    IObserver<T> observer)
         {
             var psi = new ProcessStartInfo(path, options.Arguments.ToString())
             {
@@ -208,7 +206,7 @@ namespace Spawnr
 
             options.Update(psi);
 
-            IProcess process = processFactory(psi);
+            IProcess process = options.ProcessFactory(psi);
             process.EnableRaisingEvents = true;
 
             var pid = -1;

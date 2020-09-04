@@ -66,11 +66,10 @@ namespace Spawnr.Tests
                                 e => notifications.Add(Notification.CreateOnError<T>(e)),
                                 () => notifications.Add(Notification.CreateOnCompleted<T>()));
 
-            return
-                Spawner.Spawn("dummy", options,
-                              psi => boxedProcess[0] = new TestProcess(psi) { TryKillException = null },
-                              stdoutSelector, stderrSelector,
-                              observer);
+            return Spawner.Default.Spawn("dummy",
+                                         options.WithProcessFactory(psi => boxedProcess[0] = new TestProcess(psi) { TryKillException = null }),
+                                         stdoutSelector, stderrSelector)
+                                  .Subscribe(observer);
         }
     }
 }
