@@ -14,6 +14,8 @@
 //
 #endregion
 
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Spawnr.Tests")]
+
 namespace Spawnr
 {
     using System;
