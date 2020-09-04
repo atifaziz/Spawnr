@@ -158,6 +158,12 @@ namespace Spawnr
                                   observer));
         }
 
+        sealed class Control
+        {
+            public bool Exited;
+            public bool Killed;
+        }
+
         static IDisposable Spawn<T>(string path, SpawnOptions options,
                                     Func<string, T>? stdoutSelector,
                                     Func<string, T>? stderrSelector,
@@ -180,12 +186,11 @@ namespace Spawnr
             };
 
             var pid = -1;
-            var killed = false;
-            var exited = false;
+            var control = new Control();
 
             process.OutputDataReceived += CreateDataEventHandler(stdoutSelector);
             process.ErrorDataReceived += CreateDataEventHandler(stderrSelector);
-            process.Exited += delegate { OnExited(); };
+            process.Exited += delegate { OnExited(control); };
 
             process.Start();
             pid = process.Id;
@@ -195,23 +200,37 @@ namespace Spawnr
 
             return Disposable.Create(() =>
             {
-                if (exited || killed)
-                    return;
-                killed = true;
+                lock (control)
+                {
+                    if (control.Exited || control.Killed)
+                        return;
+                    control.Killed = true;
+                }
                 process.TryKill(out var _);
             });
 
             DataReceivedEventHandler CreateDataEventHandler(Func<string, T>? selector) =>
                 (_, args) =>
                 {
+                    bool killed, exited;
+                    lock (control)
+                    {
+                        killed = control.Killed;
+                        exited = control.Exited;
+                    }
                     Debug.Assert(!exited);
                     if (!killed && args.Data is {} line && selector is {} f)
                         observer.OnNext(f(line));
                 };
 
-            void OnExited()
+            void OnExited(Control control)
             {
-                exited = true;
+                bool killed;
+                lock (control)
+                {
+                    control.Exited = true;
+                    killed = control.Killed;
+                }
                 using var _ = process; // dispose
                 if (killed)
                     return;
