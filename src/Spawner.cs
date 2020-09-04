@@ -280,6 +280,7 @@ namespace Spawnr
                     observer.OnCompleted();
                 else
                     observer.OnError(new Exception($"Process \"{Path.GetFileName(path)}\" (launched as the ID {pid}) ended with the non-zero exit code {process.ExitCode}."));
+                process.Dispose();
             }
         }
     }
