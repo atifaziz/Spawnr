@@ -216,13 +216,7 @@ namespace Spawnr
             process.ErrorDataReceived += CreateDataEventHandler(ControlFlags.ErrorReceived, stderrSelector);
             process.Exited += delegate { OnExited(control); };
 
-            process.Start();
-            pid = process.Id;
-
-            process.BeginOutputReadLine();
-            process.BeginErrorReadLine();
-
-            return Disposable.Create(() =>
+            var subscription = Disposable.Create(() =>
             {
                 lock (control)
                 {
@@ -250,6 +244,17 @@ namespace Spawnr
                     // `IDisposable.Dispose` implementations do not throw.
                 }
             });
+
+            // Do maximum setup before starting process to avoid complications
+            // that may arise with handling errors after.
+
+            process.Start();
+            pid = process.Id;
+
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+
+            return subscription;
 
             DataReceivedEventHandler CreateDataEventHandler(ControlFlags flags, Func<string, T>? selector) =>
                 (_, args) =>
