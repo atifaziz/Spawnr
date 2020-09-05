@@ -17,6 +17,7 @@
 namespace Spawnr
 {
     using System;
+    using System.ComponentModel;
     using System.Diagnostics;
     using System.Diagnostics.CodeAnalysis;
     using SysProcess = System.Diagnostics.Process;
@@ -51,8 +52,33 @@ namespace Spawnr
         public bool EnableRaisingEvents { get; set; }
 
         public void Start() => _ = _process.Start();
-        public bool TryKill([MaybeNullWhen(true)] out Exception exception) =>
-            _process.TryKill(out exception);
+
+        public bool TryKill([MaybeNullWhen(true)] out Exception exception)
+        {
+            try
+            {
+                _process.Kill();
+                exception = null;
+                return true;
+            }
+            catch (InvalidOperationException e)
+            {
+                // Occurs when:
+                // - process has already exited.
+                // - no process is associated with this Process object.
+                exception = e;
+                return false;
+            }
+            catch (Win32Exception e)
+            {
+                // Occurs when:
+                // - associated process could not be terminated.
+                // - process is terminating.
+                // - associated process is a Win16 executable.
+                exception = e;
+                return false;
+            }
+        }
 
         public void BeginErrorReadLine() => _process.BeginErrorReadLine();
         public void BeginOutputReadLine() => _process.BeginOutputReadLine();
