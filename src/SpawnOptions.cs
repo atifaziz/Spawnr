@@ -32,26 +32,30 @@ namespace Spawnr
                              System.Environment.CurrentDirectory,
                              ImmutableArray.CreateRange(from DictionaryEntry e in System.Environment.GetEnvironmentVariables()
                                                         select KeyValuePair.Create((string)e.Key, (string)e.Value)),
-                             psi => new Process(new SysProcess { StartInfo = psi }));
+                             psi => new Process(new SysProcess { StartInfo = psi }),
+                             _ => null);
 
         SpawnOptions(ProgramArguments arguments, string workingDirectory,
                      ImmutableArray<KeyValuePair<string, string>> environment,
-                     Func<ProcessStartInfo, IProcess> processFactory)
+                     Func<ProcessStartInfo, IProcess> processFactory,
+                     Func<Exception, Exception?> killErrorFunction)
         {
             Arguments = arguments;
             WorkingDirectory = workingDirectory;
             Environment = environment;
             ProcessFactory = processFactory;
+            KillErrorFunction = killErrorFunction;
         }
 
         public SpawnOptions(SpawnOptions other) :
             this(other.Arguments, other.WorkingDirectory, other.Environment,
-                 other.ProcessFactory) {}
+                 other.ProcessFactory, other.KillErrorFunction) {}
 
         public ProgramArguments Arguments { get; private set; }
         public string WorkingDirectory { get; private set; }
         public ImmutableArray<KeyValuePair<string, string>> Environment { get; private set; }
         internal Func<ProcessStartInfo, IProcess> ProcessFactory { get; private set; }
+        internal Func<Exception, Exception?> KillErrorFunction { get; private set; }
 
         public SpawnOptions WithEnvironment(ImmutableArray<KeyValuePair<string, string>> value) =>
             Environment.IsEmpty && value.IsEmpty ? this : new SpawnOptions(this) { Environment = value };
@@ -70,6 +74,11 @@ namespace Spawnr
             => value is null ? throw new ArgumentNullException(nameof(value))
              : value == ProcessFactory ? this
              : new SpawnOptions(this) { ProcessFactory = value };
+
+        internal SpawnOptions WithKillErrorFunction(Func<Exception, Exception?> value)
+            => value is null ? throw new ArgumentNullException(nameof(value))
+             : value == KillErrorFunction ? this
+             : new SpawnOptions(this) { KillErrorFunction = value };
     }
 
     public static class SpawnOptionsExtensions

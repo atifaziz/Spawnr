@@ -230,7 +230,25 @@ namespace Spawnr
                         return;
                     control.Killed = true;
                 }
-                _ = process.TryKill(out var _);
+
+                try
+                {
+                    _ = process.TryKill(out var _);
+                }
+                catch (Exception e)
+                {
+                    if (options.KillErrorFunction is {} f && f(e) is {} ee)
+                    {
+                        if (ReferenceEquals(ee, e))
+                            throw;
+                        else
+                            throw ee;
+                    }
+
+                    // ...else all errors are ignored by default during
+                    // disposal since the general expectation is that
+                    // `IDisposable.Dispose` implementations do not throw.
+                }
             });
 
             DataReceivedEventHandler CreateDataEventHandler(ControlFlags flags, Func<string, T>? selector) =>

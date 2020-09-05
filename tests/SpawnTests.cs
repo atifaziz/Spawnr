@@ -55,6 +55,25 @@ namespace Spawnr.Tests
             }));
         }
 
+        [Test]
+        public void DisposeNeverThrows()
+        {
+            var boxedProcess = new TestProcess?[] { null };
+            ref var process = ref boxedProcess[0]!;
+            var options = SpawnOptions.Create();
+            var notifications = new List<Notification<string>>();
+
+            using (var subscription = Spawn(options, notifications,
+                                            s => $"out: {s}",
+                                            s => $"err: {s}",
+                                            boxedProcess))
+            {
+                process.TryKillException = new Exception("Some error.");
+            }
+
+            Assert.Pass();
+        }
+
         static IDisposable Spawn<T>(SpawnOptions options,
                                     ICollection<Notification<T>> notifications,
                                     Func<string, T>? stdoutSelector,

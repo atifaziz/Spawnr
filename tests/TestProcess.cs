@@ -1,6 +1,7 @@
 namespace Spawnr.Tests
 {
     using System;
+    using System.ComponentModel;
     using System.Diagnostics;
     using System.Diagnostics.CodeAnalysis;
     using System.Reflection;
@@ -58,15 +59,17 @@ namespace Spawnr.Tests
         public bool TryKill([MaybeNullWhen(true)] out Exception exception)
         {
             TryKillCalled = true;
-            if (TryKillException is {} e)
+            switch (TryKillException)
             {
-                exception = TryKillException;
-                return false;
-            }
-            else
-            {
-                exception = null;
-                return true;
+                case null:
+                    exception = null;
+                    return true;
+                case Win32Exception _:
+                case InvalidOperationException _:
+                    exception = TryKillException;
+                    return false;
+                default:
+                    throw TryKillException;
             }
         }
     }
