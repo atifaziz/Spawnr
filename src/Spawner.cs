@@ -251,8 +251,16 @@ namespace Spawnr
             process.Start();
             pid = process.Id;
 
-            process.BeginOutputReadLine();
-            process.BeginErrorReadLine();
+            try
+            {
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+            }
+            catch
+            {
+                subscription.Dispose();
+                throw;
+            }
 
             return subscription;
 

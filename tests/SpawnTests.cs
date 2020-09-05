@@ -73,23 +73,99 @@ namespace Spawnr.Tests
             var options = SpawnOptions.Create();
             var notifications = new List<Notification<string>>();
 
-            using (var subscription = Spawn(options, notifications,
-                                            s => $"out: {s}",
-                                            s => $"err: {s}",
-                                            processRef))
-            {
-                var process = processRef.Value!;
-                process.TryKillException = new Exception("Some error.");
-            }
+            using var subscription = Spawn(options, notifications,
+                                           s => $"out: {s}",
+                                           s => $"err: {s}",
+                                           processRef,
+                                           p => p.TryKillException = new Exception("Some error."));
+            subscription.Dispose();
 
             Assert.Pass();
+        }
+
+        [Test]
+        public void ErrorOnStart()
+        {
+            var processRef = Ref.Create((TestProcess?)null);
+            var options = SpawnOptions.Create();
+            var notifications = new List<Notification<string>>();
+            var error = new Exception("Error starting process.");
+
+            using var subscription = Spawn(options, notifications,
+                                           s => $"out: {s}",
+                                           s => $"err: {s}",
+                                           processRef,
+                                           p => p.StartException = error);
+
+            Assert.That(notifications, Is.EqualTo(new[]
+            {
+                Notification.CreateOnError<string>(error)
+            }));
+        }
+
+        static readonly IEnumerable<TestCaseData> ErrorOnBeginReadLineTestCases = new[]
+        {
+            new TestCaseData(new Action<TestProcess, Exception>((p, e) => p.BeginOutputReadLineException = e))
+                .SetArgDisplayNames(nameof(TestProcess.BeginOutputReadLineException)),
+            new TestCaseData(new Action<TestProcess, Exception>((p, e) => p.BeginErrorReadLineException = e))
+                .SetArgDisplayNames(nameof(TestProcess.BeginErrorReadLineException)),
+        };
+
+        [TestCaseSource(nameof(ErrorOnBeginReadLineTestCases))]
+        public void ErrorOnBeginReadLine(Action<TestProcess, Exception> modifier)
+        {
+            var processRef = Ref.Create((TestProcess?)null);
+            var options = SpawnOptions.Create();
+            var notifications = new List<Notification<string>>();
+            var error = new OutOfMemoryException();
+
+            using var subscription = Spawn(options, notifications,
+                                           s => $"out: {s}",
+                                           s => $"err: {s}",
+                                           processRef,
+                                           p => modifier(p, error));
+
+            Assert.That(notifications, Is.EqualTo(new[]
+            {
+                Notification.CreateOnError<string>(error)
+            }));
+
+            var process = processRef.Value!;
+            Assert.That(process.TryKillCalled, Is.True);
+        }
+
+        [Test]
+        public void ErrorOnBeginErrorReadLineWithSomeOutputDataReceived()
+        {
+            var processRef = Ref.Create((TestProcess?)null);
+            var options = SpawnOptions.Create();
+            var notifications = new List<Notification<string>>();
+            var error = new OutOfMemoryException();
+
+            using var subscription = Spawn(options, notifications,
+                                           s => $"out: {s}",
+                                           s => $"err: {s}",
+                                           processRef,
+                                           p => p.EnteringBeginOutputReadLine += (sender, args) =>
+                                                   p.FireOutputDataReceived("foobar"),
+                                           p => p.BeginErrorReadLineException = error);
+
+            Assert.That(notifications, Is.EqualTo(new[]
+            {
+                Notification.CreateOnNext("out: foobar"),
+                Notification.CreateOnError<string>(error)
+            }));
+
+            var process = processRef.Value!;
+            Assert.That(process.TryKillCalled, Is.True);
         }
 
         static IDisposable Spawn<T>(SpawnOptions options,
                                     ICollection<Notification<T>> notifications,
                                     Func<string, T>? stdoutSelector,
                                     Func<string, T>? stderrSelector,
-                                    Ref<TestProcess?> process)
+                                    Ref<TestProcess?> process,
+                                    params Action<TestProcess>[] processModifiers)
         {
             var observer =
                 Observer.Create((T data) => notifications.Add(Notification.CreateOnNext(data)),
@@ -97,7 +173,19 @@ namespace Spawnr.Tests
                                 () => notifications.Add(Notification.CreateOnCompleted<T>()));
 
             return Spawner.Default.Spawn("dummy",
-                                         options.WithProcessFactory(psi => process.Value = new TestProcess(psi) { TryKillException = null }),
+                                         options.WithProcessFactory(psi =>
+                                         {
+                                             var tp = process.Value = new TestProcess(psi)
+                                             {
+                                                 StartException = null,
+                                                 BeginErrorReadLineException = null,
+                                                 BeginOutputReadLineException = null,
+                                                 TryKillException = null,
+                                             };
+                                             foreach (var modifier in processModifiers)
+                                                modifier(tp);
+                                             return tp;
+                                         }),
                                          stdoutSelector, stderrSelector)
                                   .Subscribe(observer);
         }

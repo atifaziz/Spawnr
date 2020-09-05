@@ -6,7 +6,7 @@ namespace Spawnr.Tests
     using System.Diagnostics.CodeAnalysis;
     using System.Reflection;
 
-    class TestProcess : IProcess
+    public class TestProcess : IProcess
     {
         public TestProcess(ProcessStartInfo startInfo) =>
             StartInfo = startInfo;
@@ -44,33 +44,73 @@ namespace Spawnr.Tests
         public void FireOutputDataReceived(string? data) =>
             OutputDataReceived?.Invoke(this, DataReceivedEventArgsFactory.Value(data));
 
+        public event EventHandler? EnteringStart;
+        public event EventHandler? LeavingStart;
+        public event EventHandler? EnteringBeginErrorReadLine;
+        public event EventHandler? LeavingBeginErrorReadLine;
+        public event EventHandler? EnteringBeginOutputReadLine;
+        public event EventHandler? LeavingBeginOutputReadLine;
+        public event EventHandler? EnteringTryKill;
+        public event EventHandler? LeavingTryKill;
+
         public bool BeginErrorReadLineCalled;
+        public Exception? BeginErrorReadLineException;
         public bool BeginOutputReadLineCalled;
+        public Exception? BeginOutputReadLineException;
         public bool DisposeCalled;
         public bool StartCalled;
+        public Exception? StartException;
         public bool TryKillCalled;
         public Exception? TryKillException;
 
-        public void BeginErrorReadLine() => BeginErrorReadLineCalled = true;
-        public void BeginOutputReadLine() => BeginOutputReadLineCalled = true;
-        public void Dispose() => DisposeCalled = true;
-        public void Start() => StartCalled = true;
+        public void BeginErrorReadLine() =>
+            OnCall(ref BeginErrorReadLineCalled,
+                   EnteringBeginErrorReadLine, LeavingBeginErrorReadLine,
+                   BeginErrorReadLineException);
+
+        public void BeginOutputReadLine() =>
+            OnCall(ref BeginOutputReadLineCalled,
+                   EnteringBeginOutputReadLine, LeavingBeginOutputReadLine,
+                   BeginOutputReadLineException);
+
+        public void Dispose() => OnCall(ref DisposeCalled);
+
+        public void Start() => OnCall(ref StartCalled,
+                                      EnteringStart, LeavingStart,
+                                      StartException);
 
         public bool TryKill([MaybeNullWhen(true)] out Exception exception)
         {
-            TryKillCalled = true;
+            OnCall(ref TryKillCalled, EnteringTryKill);
             switch (TryKillException)
             {
                 case null:
                     exception = null;
+                    OnLeaving();
                     return true;
                 case Win32Exception _:
                 case InvalidOperationException _:
                     exception = TryKillException;
+                    OnLeaving();
                     return false;
                 default:
+                    OnLeaving();
                     throw TryKillException;
             }
+
+            void OnLeaving() => LeavingTryKill?.Invoke(this, EventArgs.Empty);
+        }
+
+        void OnCall(ref bool called,
+                    EventHandler? enteringHandler = null,
+                    EventHandler? leavingHandler = null,
+                    Exception? exception = null)
+        {
+            enteringHandler?.Invoke(this, EventArgs.Empty);
+            called = true;
+            if (exception is {} e)
+                throw e;
+            leavingHandler?.Invoke(this, EventArgs.Empty);
         }
     }
 }
