@@ -29,7 +29,7 @@ namespace Spawnr.Tests
             Assert.That(psi.WorkingDirectory, Is.Empty);
             Assert.That(psi.ArgumentList, Is.Empty);
 
-            var options = SpawnOptions.Create();
+            var options = SpawnOptions.Create().AddArgument("foo", "bar", "baz");
             options.Update(psi);
 
             Assert.That(psi.WorkingDirectory, Is.EqualTo(options.WorkingDirectory));

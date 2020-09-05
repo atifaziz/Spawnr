@@ -20,7 +20,7 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)'=='netstandard2.1'">
-    <DefineConstants>$(DefineConstants);ASYNC_STREAMS</DefineConstants>
+    <DefineConstants>$(DefineConstants);ASYNC_STREAMS;PROCESS_ARG_LIST</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

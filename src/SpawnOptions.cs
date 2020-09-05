@@ -163,6 +163,15 @@ namespace Spawnr
             environment.Clear();
             foreach (var e in options.Environment)
                 environment.Add(e.Key, e.Value);
+
+#if PROCESS_ARG_LIST
+            var args = startInfo.ArgumentList;
+            args.Clear();
+            foreach (var arg in options.Arguments)
+                args.Add(arg);
+#else
+            startInfo.Arguments = options.Arguments.ToString();
+#endif
         }
     }
 }

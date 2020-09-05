@@ -13,8 +13,10 @@ namespace Spawnr.Tests
             var processRef = Ref.Create((TestProcess?)null);
             var options = SpawnOptions.Create();
             var notifications = new List<Notification<string>>();
+            var args = new[] { "foo", "bar", "baz" };
 
-            var subscription = Spawn(options, notifications,
+            var subscription = Spawn(options.AddArguments(args),
+                                     notifications,
                                      s => $"out: {s}",
                                      s => $"err: {s}",
                                      processRef);
@@ -24,7 +26,16 @@ namespace Spawnr.Tests
 
             var process = processRef.Value!;
 
-            Assert.That(process.StartInfo, Is.Not.Null);
+            var psi = process.StartInfo;
+            Assert.That(psi, Is.Not.Null);
+            Assert.That(psi.CreateNoWindow, Is.True);
+            Assert.That(psi.UseShellExecute, Is.False);
+            Assert.That(psi.RedirectStandardError, Is.True);
+            Assert.That(psi.RedirectStandardOutput, Is.True);
+            Assert.That(psi.RedirectStandardInput, Is.False);
+            Assert.That(psi.Arguments, Is.Empty);
+            Assert.That(psi.ArgumentList, Is.EqualTo(args));
+
             Assert.That(process.StartCalled, Is.True);
             Assert.That(process.EnableRaisingEvents, Is.True);
             Assert.That(process.BeginOutputReadLineCalled, Is.True);

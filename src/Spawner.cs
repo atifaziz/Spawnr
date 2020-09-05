@@ -196,7 +196,7 @@ namespace Spawnr
                                     Func<string, T>? stderrSelector,
                                     IObserver<T> observer)
         {
-            var psi = new ProcessStartInfo(path, options.Arguments.ToString())
+            var psi = new ProcessStartInfo(path)
             {
                 CreateNoWindow         = true,
                 UseShellExecute        = false,
