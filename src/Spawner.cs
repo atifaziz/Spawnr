@@ -230,7 +230,7 @@ namespace Spawnr
                         return;
                     control.Killed = true;
                 }
-                process.TryKill(out var _);
+                _ = process.TryKill(out var _);
             });
 
             DataReceivedEventHandler CreateDataEventHandler(ControlFlags flags, Func<string, T>? selector) =>

@@ -50,7 +50,7 @@ namespace Spawnr
 
         public bool EnableRaisingEvents { get; set; }
 
-        public void Start() => _process.Start();
+        public void Start() => _ = _process.Start();
         public bool TryKill([MaybeNullWhen(true)] out Exception exception) =>
             _process.TryKill(out exception);
 
