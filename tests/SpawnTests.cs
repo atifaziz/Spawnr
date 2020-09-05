@@ -10,19 +10,19 @@ namespace Spawnr.Tests
         [Test]
         public void Spawn()
         {
-            var boxedProcess = new TestProcess?[] { null };
+            var processRef = Ref.Create((TestProcess?)null);
             var options = SpawnOptions.Create();
             var notifications = new List<Notification<string>>();
 
             var subscription = Spawn(options, notifications,
                                      s => $"out: {s}",
                                      s => $"err: {s}",
-                                     boxedProcess);
+                                     processRef);
 
             Assert.That(subscription, Is.Not.Null);
-            Assert.That(boxedProcess[0], Is.Not.Null);
+            Assert.That(processRef.Value, Is.Not.Null);
 
-            ref var process = ref boxedProcess[0]!;
+            var process = processRef.Value!;
 
             Assert.That(process.StartInfo, Is.Not.Null);
             Assert.That(process.StartCalled, Is.True);
@@ -58,16 +58,16 @@ namespace Spawnr.Tests
         [Test]
         public void DisposeNeverThrows()
         {
-            var boxedProcess = new TestProcess?[] { null };
-            ref var process = ref boxedProcess[0]!;
+            var processRef = Ref.Create((TestProcess?)null);
             var options = SpawnOptions.Create();
             var notifications = new List<Notification<string>>();
 
             using (var subscription = Spawn(options, notifications,
                                             s => $"out: {s}",
                                             s => $"err: {s}",
-                                            boxedProcess))
+                                            processRef))
             {
+                var process = processRef.Value!;
                 process.TryKillException = new Exception("Some error.");
             }
 
@@ -78,7 +78,7 @@ namespace Spawnr.Tests
                                     ICollection<Notification<T>> notifications,
                                     Func<string, T>? stdoutSelector,
                                     Func<string, T>? stderrSelector,
-                                    TestProcess?[] boxedProcess)
+                                    Ref<TestProcess?> process)
         {
             var observer =
                 Observer.Create((T data) => notifications.Add(Notification.CreateOnNext(data)),
@@ -86,7 +86,7 @@ namespace Spawnr.Tests
                                 () => notifications.Add(Notification.CreateOnCompleted<T>()));
 
             return Spawner.Default.Spawn("dummy",
-                                         options.WithProcessFactory(psi => boxedProcess[0] = new TestProcess(psi) { TryKillException = null }),
+                                         options.WithProcessFactory(psi => process.Value = new TestProcess(psi) { TryKillException = null }),
                                          stdoutSelector, stderrSelector)
                                   .Subscribe(observer);
         }
