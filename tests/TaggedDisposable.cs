@@ -1,4 +1,4 @@
-﻿#region Copyright (c) 2014 Atif Aziz. All rights reserved.
+#region Copyright (c) 2020 Atif Aziz. All rights reserved.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
 // copy of this software and associated documentation files (the "Software"),
@@ -21,25 +21,24 @@
 #endregion
 
 using System;
-using System.Diagnostics;
 
-static partial class Ref
+static partial class TaggedDisposable
 {
-    public static Ref<T> Create<T>(T value) => new Ref<T>(value);
+    public static TaggedDisposable<T> Create<T>(IDisposable resource, T tag) =>
+        new TaggedDisposable<T>(resource, tag);
 }
 
-[DebuggerDisplay("{" + nameof(Value) + "}")]
-sealed partial class Ref<T> : IFormattable
+sealed partial class TaggedDisposable<T> : IDisposable
 {
-    public T Value { get; set; }
-    public Ref(T value) => Value = value;
-    public override string ToString() => $"{Value}";
+    readonly IDisposable _disposable;
 
-    public string ToString(string? format, IFormatProvider? formatProvider) =>
-        Value is IFormattable fv ? fv.ToString(format, formatProvider)
-                                 : ToString();
+    public TaggedDisposable(IDisposable resource, T tag)
+    {
+        _disposable = resource ?? throw new ArgumentNullException(nameof(resource));
+        Tag = tag;
+    }
 
-    public static implicit operator T(Ref<T> reference) =>
-        reference is null ? throw new InvalidCastException(nameof(reference))
-                          : reference.Value;
+    public T Tag { get; private set; }
+
+    public void Dispose() => _disposable.Dispose();
 }

@@ -2,6 +2,7 @@ namespace Spawnr.Tests
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Linq;
     using System.Reactive;
     using NUnit.Framework;
@@ -13,20 +14,16 @@ namespace Spawnr.Tests
         [Test]
         public void Spawn()
         {
-            var processRef = Ref.Create((TestProcess?)null);
             var notifications = new List<Notification<string>>();
             var args = new[] { "foo", "bar", "baz" };
 
             var subscription = Spawn(SpawnOptions.AddArguments(args),
                                      notifications,
                                      s => $"out: {s}",
-                                     s => $"err: {s}",
-                                     processRef);
+                                     s => $"err: {s}");
 
-            Assert.That(subscription, Is.Not.Null);
-            Assert.That(processRef.Value, Is.Not.Null);
-
-            var process = processRef.Value!;
+            var process = subscription.Tag;
+            Assert.That(process, Is.Not.Null);
 
             var psi = process.StartInfo;
             Assert.That(psi, Is.Not.Null);
@@ -71,13 +68,11 @@ namespace Spawnr.Tests
         [Test]
         public void DisposeNeverThrows()
         {
-            var processRef = Ref.Create((TestProcess?)null);
             var notifications = new List<Notification<string>>();
 
             using var subscription = Spawn(SpawnOptions, notifications,
                                            s => $"out: {s}",
                                            s => $"err: {s}",
-                                           processRef,
                                            p => p.TryKillException = new Exception("Some error."));
             subscription.Dispose();
 
@@ -87,14 +82,12 @@ namespace Spawnr.Tests
         [Test]
         public void ErrorOnStart()
         {
-            var processRef = Ref.Create((TestProcess?)null);
             var notifications = new List<Notification<string>>();
             var error = new Exception("Error starting process.");
 
             using var subscription = Spawn(SpawnOptions, notifications,
                                            s => $"out: {s}",
                                            s => $"err: {s}",
-                                           processRef,
                                            p => p.StartException = error);
 
             Assert.That(notifications, Is.EqualTo(new[]
@@ -114,14 +107,12 @@ namespace Spawnr.Tests
         [TestCaseSource(nameof(ErrorOnBeginReadLineTestCases))]
         public void ErrorOnBeginReadLine(Action<TestProcess, Exception> modifier)
         {
-            var processRef = Ref.Create((TestProcess?)null);
             var notifications = new List<Notification<string>>();
             var error = new OutOfMemoryException();
 
             using var subscription = Spawn(SpawnOptions, notifications,
                                            s => $"out: {s}",
                                            s => $"err: {s}",
-                                           processRef,
                                            p => modifier(p, error));
 
             Assert.That(notifications, Is.EqualTo(new[]
@@ -129,21 +120,19 @@ namespace Spawnr.Tests
                 Notification.CreateOnError<string>(error)
             }));
 
-            var process = processRef.Value!;
+            var process = subscription.Tag;
             Assert.That(process.TryKillCalled, Is.True);
         }
 
         [Test]
         public void ErrorOnBeginErrorReadLineWithSomeOutputDataReceived()
         {
-            var processRef = Ref.Create((TestProcess?)null);
             var notifications = new List<Notification<string>>();
             var error = new OutOfMemoryException();
 
             using var subscription = Spawn(SpawnOptions, notifications,
                                            s => $"out: {s}",
                                            s => $"err: {s}",
-                                           processRef,
                                            p => p.EnteringBeginOutputReadLine += (sender, args) =>
                                                    p.FireOutputDataReceived("foobar"),
                                            p => p.BeginErrorReadLineException = error);
@@ -154,22 +143,20 @@ namespace Spawnr.Tests
                 Notification.CreateOnError<string>(error)
             }));
 
-            var process = processRef.Value!;
+            var process = subscription.Tag;
             Assert.That(process.TryKillCalled, Is.True);
         }
 
         [Test]
         public void NonZeroExitCodeProducesError()
         {
-            var processRef = Ref.Create((TestProcess?)null);
             var notifications = new List<Notification<string>>();
 
             using var subscription = Spawn(SpawnOptions, notifications,
                                            s => $"out: {s}",
-                                           s => $"err: {s}",
-                                           processRef);
+                                           s => $"err: {s}");
 
-            var process = processRef.Value!;
+            var process = subscription.Tag;
             process.End(42);
 
             Assert.That(notifications.Count, Is.EqualTo(1));
@@ -184,16 +171,14 @@ namespace Spawnr.Tests
         [Test]
         public void SuppressNonZeroExitCodeError()
         {
-            var processRef = Ref.Create((TestProcess?)null);
             var notifications = new List<Notification<string>>();
 
             using var subscription = Spawn(SpawnOptions.SuppressNonZeroExitCodeError(),
                                            notifications,
                                            s => $"out: {s}",
-                                           s => $"err: {s}",
-                                           processRef);
+                                           s => $"err: {s}");
 
-            var process = processRef.Value!;
+            var process = subscription.Tag;
             process.End(42);
 
             Assert.That(notifications, Is.EqualTo(new[]
@@ -202,35 +187,41 @@ namespace Spawnr.Tests
             }));
         }
 
-        static IDisposable Spawn<T>(SpawnOptions options,
-                                    ICollection<Notification<T>> notifications,
-                                    Func<string, T>? stdoutSelector,
-                                    Func<string, T>? stderrSelector,
-                                    Ref<TestProcess?> process,
-                                    params Action<TestProcess>[] processModifiers)
+        static TaggedDisposable<TestProcess>
+            Spawn<T>(SpawnOptions options,
+                     ICollection<Notification<T>> notifications,
+                     Func<string, T>? stdoutSelector,
+                     Func<string, T>? stderrSelector,
+                     params Action<TestProcess>[] processModifiers)
         {
             var observer =
                 Observer.Create((T data) => notifications.Add(Notification.CreateOnNext(data)),
                                 e => notifications.Add(Notification.CreateOnError<T>(e)),
                                 () => notifications.Add(Notification.CreateOnCompleted<T>()));
 
-            return Spawner.Default.Spawn("dummy",
-                                         options.WithProcessFactory(psi =>
-                                         {
-                                             var tp = process.Value = new TestProcess(psi)
-                                             {
-                                                 Id = 123,
-                                                 StartException = null,
-                                                 BeginErrorReadLineException = null,
-                                                 BeginOutputReadLineException = null,
-                                                 TryKillException = null,
-                                             };
-                                             foreach (var modifier in processModifiers)
-                                                modifier(tp);
-                                             return tp;
-                                         }),
-                                         stdoutSelector, stderrSelector)
-                                  .Subscribe(observer);
+            TestProcess? process = null;
+
+            var subscription =
+                Spawner.Default.Spawn("dummy",
+                                      options.WithProcessFactory(psi =>
+                                      {
+                                          process = new TestProcess(psi)
+                                          {
+                                              Id = 123,
+                                              StartException = null,
+                                              BeginErrorReadLineException = null,
+                                              BeginOutputReadLineException = null,
+                                              TryKillException = null,
+                                          };
+                                          foreach (var modifier in processModifiers)
+                                             modifier(process);
+                                          return process;
+                                      }),
+                                      stdoutSelector, stderrSelector)
+                               .Subscribe(observer);
+
+            Debug.Assert(process is {});
+            return TaggedDisposable.Create(subscription, process);
         }
     }
 }
