@@ -147,7 +147,7 @@ namespace Spawnr
 
     public static class Spawner
     {
-        public static ISpawner Default => new Implementation();
+        public static readonly ISpawner Default = new Implementation();
 
         sealed class Implementation : ISpawner
         {
