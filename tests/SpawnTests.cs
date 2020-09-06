@@ -7,15 +7,16 @@ namespace Spawnr.Tests
 
     public class SpawnTests
     {
+        static readonly SpawnOptions SpawnOptions = SpawnOptions.Create();
+
         [Test]
         public void Spawn()
         {
             var processRef = Ref.Create((TestProcess?)null);
-            var options = SpawnOptions.Create();
             var notifications = new List<Notification<string>>();
             var args = new[] { "foo", "bar", "baz" };
 
-            var subscription = Spawn(options.AddArguments(args),
+            var subscription = Spawn(SpawnOptions.AddArguments(args),
                                      notifications,
                                      s => $"out: {s}",
                                      s => $"err: {s}",
@@ -70,10 +71,9 @@ namespace Spawnr.Tests
         public void DisposeNeverThrows()
         {
             var processRef = Ref.Create((TestProcess?)null);
-            var options = SpawnOptions.Create();
             var notifications = new List<Notification<string>>();
 
-            using var subscription = Spawn(options, notifications,
+            using var subscription = Spawn(SpawnOptions, notifications,
                                            s => $"out: {s}",
                                            s => $"err: {s}",
                                            processRef,
@@ -87,11 +87,10 @@ namespace Spawnr.Tests
         public void ErrorOnStart()
         {
             var processRef = Ref.Create((TestProcess?)null);
-            var options = SpawnOptions.Create();
             var notifications = new List<Notification<string>>();
             var error = new Exception("Error starting process.");
 
-            using var subscription = Spawn(options, notifications,
+            using var subscription = Spawn(SpawnOptions, notifications,
                                            s => $"out: {s}",
                                            s => $"err: {s}",
                                            processRef,
@@ -115,11 +114,10 @@ namespace Spawnr.Tests
         public void ErrorOnBeginReadLine(Action<TestProcess, Exception> modifier)
         {
             var processRef = Ref.Create((TestProcess?)null);
-            var options = SpawnOptions.Create();
             var notifications = new List<Notification<string>>();
             var error = new OutOfMemoryException();
 
-            using var subscription = Spawn(options, notifications,
+            using var subscription = Spawn(SpawnOptions, notifications,
                                            s => $"out: {s}",
                                            s => $"err: {s}",
                                            processRef,
@@ -138,11 +136,10 @@ namespace Spawnr.Tests
         public void ErrorOnBeginErrorReadLineWithSomeOutputDataReceived()
         {
             var processRef = Ref.Create((TestProcess?)null);
-            var options = SpawnOptions.Create();
             var notifications = new List<Notification<string>>();
             var error = new OutOfMemoryException();
 
-            using var subscription = Spawn(options, notifications,
+            using var subscription = Spawn(SpawnOptions, notifications,
                                            s => $"out: {s}",
                                            s => $"err: {s}",
                                            processRef,
