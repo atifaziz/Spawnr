@@ -82,6 +82,13 @@ namespace Spawnr
 
             IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
         }
+
+        public static IObservable<T> AsObservable<T>(this ISpawnable<T> spawnable) =>
+            spawnable is null ? throw new ArgumentNullException(nameof(spawnable))
+                              : spawnable;
+        public static IEnumerable<T> AsEnumerable<T>(this ISpawnable<T> spawnable) =>
+            spawnable is null ? throw new ArgumentNullException(nameof(spawnable))
+                              : spawnable;
     }
 
     public interface ISpawner
@@ -357,6 +364,10 @@ namespace Spawnr
 
     partial class Spawnable
     {
+        public static IAsyncEnumerable<T> AsAsyncEnumerable<T>(this ISpawnable<T> spawnable) =>
+            spawnable is null ? throw new ArgumentNullException(nameof(spawnable))
+                              : spawnable;
+
         partial class Implementation<T>
         {
             public async IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
