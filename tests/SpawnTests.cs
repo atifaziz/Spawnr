@@ -187,6 +187,93 @@ namespace Spawnr.Tests
             }));
         }
 
+        [Test]
+        public void JustOutputData()
+        {
+            var notifications = new List<Notification<string>>();
+
+            using var subscription = Spawn(SpawnOptions.SuppressNonZeroExitCodeError(),
+                                           notifications, s => $"out: {s}", null);
+
+            var process = subscription.Tag;
+            process.FireOutputDataReceived("foo");
+            process.FireOutputDataReceived("bar");
+            process.FireOutputDataReceived("baz");
+            process.End(42);
+
+            Assert.That(process.StartInfo.RedirectStandardError, Is.False);
+            Assert.That(process.BeginErrorReadLineCalled, Is.False);
+            Assert.That(process.ErrorDataReceivedHandlerCount, Is.Zero);
+
+            Assert.That(process.StartInfo.RedirectStandardOutput, Is.True);
+            Assert.That(process.BeginOutputReadLineCalled, Is.True);
+            Assert.That(process.OutputDataReceivedHandlerCount, Is.EqualTo(1));
+
+            Assert.That(notifications, Is.EqualTo(new[]
+            {
+                Notification.CreateOnNext("out: foo"),
+                Notification.CreateOnNext("out: bar"),
+                Notification.CreateOnNext("out: baz"),
+                Notification.CreateOnCompleted<string>()
+            }));
+        }
+
+        [Test]
+        public void JustErrorData()
+        {
+            var notifications = new List<Notification<string>>();
+
+            using var subscription = Spawn(SpawnOptions.SuppressNonZeroExitCodeError(),
+                                           notifications, null, s => $"err: {s}");
+
+            var process = subscription.Tag;
+            process.FireErrorDataReceived("foo");
+            process.FireErrorDataReceived("bar");
+            process.FireErrorDataReceived("baz");
+            process.End(42);
+
+            Assert.That(process.StartInfo.RedirectStandardError, Is.True);
+            Assert.That(process.BeginErrorReadLineCalled, Is.True);
+            Assert.That(process.ErrorDataReceivedHandlerCount, Is.EqualTo(1));
+
+            Assert.That(process.StartInfo.RedirectStandardOutput, Is.False);
+            Assert.That(process.BeginOutputReadLineCalled, Is.False);
+            Assert.That(process.OutputDataReceivedHandlerCount, Is.Zero);
+
+            Assert.That(notifications, Is.EqualTo(new[]
+            {
+                Notification.CreateOnNext("err: foo"),
+                Notification.CreateOnNext("err: bar"),
+                Notification.CreateOnNext("err: baz"),
+                Notification.CreateOnCompleted<string>()
+            }));
+        }
+
+        [Test]
+        public void NoOutput()
+        {
+            var notifications = new List<Notification<string>>();
+
+            using var subscription = Spawn(SpawnOptions.SuppressNonZeroExitCodeError(),
+                                           notifications, null, null);
+
+            var process = subscription.Tag;
+            process.End(42);
+
+            Assert.That(process.StartInfo.RedirectStandardError, Is.False);
+            Assert.That(process.BeginErrorReadLineCalled, Is.False);
+            Assert.That(process.ErrorDataReceivedHandlerCount, Is.Zero);
+
+            Assert.That(process.StartInfo.RedirectStandardOutput, Is.False);
+            Assert.That(process.BeginOutputReadLineCalled, Is.False);
+            Assert.That(process.ErrorDataReceivedHandlerCount, Is.Zero);
+
+            Assert.That(notifications, Is.EqualTo(new[]
+            {
+                Notification.CreateOnCompleted<string>()
+            }));
+        }
+
         static TaggedDisposable<TestProcess>
             Spawn<T>(SpawnOptions options,
                      ICollection<Notification<T>> notifications,

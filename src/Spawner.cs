@@ -196,12 +196,20 @@ namespace Spawnr
                                     Func<string, T>? stderrSelector,
                                     IObserver<T> observer)
         {
+            var outputFlags = (stderrSelector, stdoutSelector) switch
+            {
+                ({}  , null) => ControlFlags.ErrorReceived,
+                (null, {}  ) => ControlFlags.OutputReceived,
+                ({}  , {}  ) => ControlFlags.ErrorReceived | ControlFlags.OutputReceived,
+                _ => ControlFlags.None,
+            };
+
             var psi = new ProcessStartInfo(path)
             {
                 CreateNoWindow         = true,
                 UseShellExecute        = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError  = true,
+                RedirectStandardOutput = stdoutSelector is {},
+                RedirectStandardError  = stderrSelector is {},
             };
 
             options.Update(psi);
@@ -212,8 +220,11 @@ namespace Spawnr
             var pid = -1;
             var control = new Control();
 
-            process.OutputDataReceived += CreateDataEventHandler(ControlFlags.OutputReceived, stdoutSelector);
-            process.ErrorDataReceived += CreateDataEventHandler(ControlFlags.ErrorReceived, stderrSelector);
+            if (stdoutSelector is {})
+                process.OutputDataReceived += CreateDataEventHandler(ControlFlags.OutputReceived, stdoutSelector);
+            if (stderrSelector is {})
+                process.ErrorDataReceived += CreateDataEventHandler(ControlFlags.ErrorReceived, stderrSelector);
+
             process.Exited += delegate { OnExited(control); };
 
             var subscription = Disposable.Create(() =>
@@ -253,8 +264,10 @@ namespace Spawnr
 
             try
             {
-                process.BeginOutputReadLine();
-                process.BeginErrorReadLine();
+                if (stdoutSelector is {})
+                    process.BeginOutputReadLine();
+                if (stderrSelector is {})
+                    process.BeginErrorReadLine();
             }
             catch
             {
@@ -264,7 +277,7 @@ namespace Spawnr
 
             return subscription;
 
-            DataReceivedEventHandler CreateDataEventHandler(ControlFlags flags, Func<string, T>? selector) =>
+            DataReceivedEventHandler CreateDataEventHandler(ControlFlags flags, Func<string, T> selector) =>
                 (_, args) =>
                 {
                     bool killed, exited, outputsReceived;
@@ -273,7 +286,7 @@ namespace Spawnr
                         control[flags] = true;
                         killed = control.Killed;
                         exited = control.Exited;
-                        outputsReceived = control.OutputReceived && control.ErrorReceived;
+                        outputsReceived = control[outputFlags];
                     }
                     if (killed)
                     {
@@ -282,8 +295,7 @@ namespace Spawnr
                     }
                     else if (args.Data is {} line)
                     {
-                        if (selector is {} f)
-                            observer.OnNext(f(line));
+                        observer.OnNext(selector(line));
                     }
                     else if (exited && outputsReceived)
                     {
@@ -298,7 +310,7 @@ namespace Spawnr
                 {
                     control.Exited = true;
                     killed = control.Killed;
-                    outputsReceived = control.OutputReceived && control.ErrorReceived;
+                    outputsReceived = control[outputFlags];
                 }
                 if (killed || !outputsReceived)
                     return;

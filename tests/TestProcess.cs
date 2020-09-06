@@ -21,6 +21,9 @@ namespace Spawnr.Tests
         public event DataReceivedEventHandler? ErrorDataReceived;
         public event DataReceivedEventHandler? OutputDataReceived;
 
+        public int ErrorDataReceivedHandlerCount => ErrorDataReceived?.GetInvocationList().Length ?? 0;
+        public int OutputDataReceivedHandlerCount => OutputDataReceived?.GetInvocationList().Length ?? 0;
+
         public void FireExited() =>
             Exited?.Invoke(this, EventArgs.Empty);
 
