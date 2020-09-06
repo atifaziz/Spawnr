@@ -13,5 +13,5 @@ goto :EOF
 goto :EOF
 
 :test
-dotnet test --no-build tests -c %*
+dotnet test --no-build tests\Tests -c %*
 goto :EOF
