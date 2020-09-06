@@ -331,6 +331,7 @@ namespace Spawnr.Tests
                         process = new TestProcess(psi)
                         {
                             Id = 123,
+                            StandardInput = System.IO.StreamWriter.Null,
                             StartException = null,
                             BeginErrorReadLineException = null,
                             BeginOutputReadLineException = null,
@@ -353,6 +354,7 @@ namespace Spawnr.Tests
     using System;
     using System.IO;
     using System.Linq;
+    using System.Reactive.Linq;
     using System.Reflection;
     using System.Text.RegularExpressions;
     using NUnit.Framework;
@@ -385,16 +387,19 @@ namespace Spawnr.Tests
 
             enum Std { Out, Err }
 
-            static ISpawnable<(Std Stream, string Line)> TestAppStreams() =>
+            static ISpawnable<(Std Stream, string Line)>
+                TestAppStreams(IObservable<string>? stdin = null) =>
                 Spawn("dotnet", ProgramArguments.Var(_testAppPath!),
-                      s => (Std.Out, s), s => (Std.Err, s));
+                      stdin, s => (Std.Out, s), s => (Std.Err, s));
 
-            static ISpawnable<string> TestAppOutput() =>
-                Spawn("dotnet", ProgramArguments.Var(_testAppPath!));
+            static ISpawnable<string>
+                TestAppOutput(IObservable<string>? stdin = null) =>
+                Spawn("dotnet", ProgramArguments.Var(_testAppPath!), stdin);
 
-            static ISpawnable<string> TestAppError() =>
+            static ISpawnable<string>
+                TestAppError(IObservable<string>? stdin = null) =>
                 Spawn("dotnet", ProgramArguments.Var(_testAppPath!),
-                      stdout: null, stderr: s => s);
+                      stdin, stdout: null, stderr: s => s);
 
             [Test]
             public void Nop()
@@ -416,7 +421,7 @@ namespace Spawnr.Tests
             public void Error()
             {
                 var e = Assert.Throws<Exception>(() =>
-                    TestAppStreams().AddArgument("error").ToArray());
+                    TestAppStreams().AddArgument("error").AsEnumerable().ToArray());
 
                 Assert.That(e.Message, DoesMatchExitCodeErrorMessage(0xbd));
             }
@@ -469,6 +474,63 @@ namespace Spawnr.Tests
                 {
                     (Std.Err, "Nam nec gravida justo."),
                     (Std.Err, "Cras sed semper elit."),
+                }));
+            }
+
+            [Test]
+            public void Input()
+            {
+                var commands = new[]
+                {
+                    "nop",
+                    "lorem 3 2 4",
+                    "nop",
+                    "exit",
+                };
+
+                var stdin = commands.ToObservable();
+
+                var (stdout, stderr) =
+                    TestAppStreams(stdin).Partition(s => s.Stream == Std.Out);
+
+                Assert.That(stdout, Is.EqualTo(new[]
+                {
+                    (Std.Out, "Lorem ipsum dolor sit amet, consectetur adipiscing elit."),
+                    (Std.Out, "Nullam suscipit nunc non nulla euismod ornare."),
+                    (Std.Out, "Ut auctor felis lectus, eu cursus dolor ullamcorper ac."),
+                    (Std.Out, "Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus."),
+                    (Std.Out, "Cras at ligula ut odio molestie egestas."),
+                    (Std.Out, "Sed sit amet dui porttitor, bibendum libero sed, porta velit."),
+                    (Std.Out, "Donec tristique risus vulputate elit hendrerit rutrum."),
+                }));
+
+                Assert.That(stderr, Is.EqualTo(new[]
+                {
+                    (Std.Err, "Nam nec gravida justo."),
+                    (Std.Err, "Cras sed semper elit."),
+                }));
+            }
+
+            [Test]
+            public void Chain()
+            {
+                var commands = new[]
+                {
+                    "lorem 3",
+                    "exit",
+                };
+
+                var result =
+                    commands.ToObservable()
+                            .Pipe(TestAppOutput())
+                            .Pipe(TestAppOutput().AddArgument("upper"))
+                            .Pipe(TestAppOutput().AddArgument("prefix", "> "));
+
+                Assert.That(result, Is.EqualTo(new[]
+                {
+                    "> LOREM IPSUM DOLOR SIT AMET, CONSECTETUR ADIPISCING ELIT.",
+                    "> NULLAM SUSCIPIT NUNC NON NULLA EUISMOD ORNARE.",
+                    "> UT AUCTOR FELIS LECTUS, EU CURSUS DOLOR ULLAMCORPER AC.",
                 }));
             }
         }

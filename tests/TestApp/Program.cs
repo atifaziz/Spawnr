@@ -22,7 +22,31 @@ static class Program
         switch (args.TryDequeue(out var command) ? command : null)
         {
             case null:
-                throw new Exception("Missing required command.");
+            {
+                while (true)
+                {
+                    var line = Console.In.ReadLine();
+                    if (line is null)
+                        return 0;
+                    try
+                    {
+                        _ = Run(new Queue<string>(line.Split(' ')));
+                    }
+                    catch (InvalidCommandException e)
+                    {
+                        Console.Error.WriteLine(e.Message);
+                    }
+                }
+            }
+            case "prefix":
+            {
+                var prefix = args.TryDequeue(out var arg) ? arg : "> ";
+                return TransformInput(s => prefix + s);
+            }
+            case "upper":
+                return TransformInput(s => s.ToUpperInvariant());
+            case "lower":
+                return TransformInput(s => s.ToLowerInvariant());
             case "nop":
                 return 0;
             case "lorem":
@@ -52,13 +76,30 @@ static class Program
                 var code = args.TryDequeue(out var arg)
                          ? int.Parse(arg, NumberStyles.None, CultureInfo.InvariantCulture)
                          : 0;
-                return code;
+                Environment.Exit(code);
+                return code; // should never get here
             }
             default:
             {
-                throw new Exception($"Unknown command: {command}.");
+                throw new InvalidCommandException($"Unknown command: {command}.");
             }
         }
+
+        static int TransformInput(Func<string, string> transformer)
+        {
+            while (true)
+            {
+                var line = Console.In.ReadLine();
+                if (line is null)
+                    return 0;
+                Console.WriteLine(transformer(line));
+            }
+        }
+    }
+
+    sealed class InvalidCommandException : System.Exception
+    {
+        public InvalidCommandException(string message) : base(message) {}
     }
 
     static readonly string[] LoremIpsums =

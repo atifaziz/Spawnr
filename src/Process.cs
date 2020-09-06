@@ -20,6 +20,7 @@ namespace Spawnr
     using System.ComponentModel;
     using System.Diagnostics;
     using System.Diagnostics.CodeAnalysis;
+    using System.IO;
     using SysProcess = System.Diagnostics.Process;
 
     interface IProcess : IDisposable
@@ -32,6 +33,8 @@ namespace Spawnr
         event EventHandler Exited;
         event DataReceivedEventHandler ErrorDataReceived;
         event DataReceivedEventHandler OutputDataReceived;
+
+        StreamWriter StandardInput { get; }
 
         void Start();
         bool TryKill([MaybeNullWhen(true)] out Exception exception);
@@ -102,6 +105,8 @@ namespace Spawnr
             add    => _process.OutputDataReceived += value;
             remove => _process.OutputDataReceived -= value;
         }
+
+        public StreamWriter StandardInput => _process.StandardInput;
 
         public void Dispose() => _process.Dispose();
     }

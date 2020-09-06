@@ -4,6 +4,7 @@ namespace Spawnr.Tests
     using System.ComponentModel;
     using System.Diagnostics;
     using System.Diagnostics.CodeAnalysis;
+    using System.IO;
     using System.Reflection;
 
     public class TestProcess : IProcess
@@ -20,6 +21,8 @@ namespace Spawnr.Tests
         public event EventHandler? Exited;
         public event DataReceivedEventHandler? ErrorDataReceived;
         public event DataReceivedEventHandler? OutputDataReceived;
+
+        public StreamWriter StandardInput { get; set; } = StreamWriter.Null;
 
         public int ErrorDataReceivedHandlerCount => ErrorDataReceived?.GetInvocationList().Length ?? 0;
         public int OutputDataReceivedHandlerCount => OutputDataReceived?.GetInvocationList().Length ?? 0;
