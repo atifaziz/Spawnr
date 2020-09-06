@@ -307,10 +307,24 @@ namespace Spawnr
 
             void Conclude()
             {
-                if (process.ExitCode == 0)
+                Exception? error = null;
+
+                if (options.ExitCodeErrorFunction is {} ef)
+                {
+                    var args = new ExitCodeErrorArgs(path, options.Arguments, pid, process.ExitCode);
+                    error = ef(args);
+                }
+                else
+                {
+                    if (process.ExitCode != 0)
+                        error = new Exception($"Process \"{Path.GetFileName(path)}\" (launched as the ID {pid}) ended with the non-zero exit code {process.ExitCode}.");
+                }
+
+                if (error is null)
                     observer.OnCompleted();
                 else
-                    observer.OnError(new Exception($"Process \"{Path.GetFileName(path)}\" (launched as the ID {pid}) ended with the non-zero exit code {process.ExitCode}."));
+                    observer.OnError(error);
+
                 process.Dispose();
             }
         }

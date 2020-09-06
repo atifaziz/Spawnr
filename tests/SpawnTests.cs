@@ -181,6 +181,27 @@ namespace Spawnr.Tests
                         Is.EqualTo("Process \"dummy\" (launched as the ID 123) ended with the non-zero exit code 42."));
         }
 
+        [Test]
+        public void SuppressNonZeroExitCodeError()
+        {
+            var processRef = Ref.Create((TestProcess?)null);
+            var notifications = new List<Notification<string>>();
+
+            using var subscription = Spawn(SpawnOptions.SuppressNonZeroExitCodeError(),
+                                           notifications,
+                                           s => $"out: {s}",
+                                           s => $"err: {s}",
+                                           processRef);
+
+            var process = processRef.Value!;
+            process.End(42);
+
+            Assert.That(notifications, Is.EqualTo(new[]
+            {
+                Notification.CreateOnCompleted<string>()
+            }));
+        }
+
         static IDisposable Spawn<T>(SpawnOptions options,
                                     ICollection<Notification<T>> notifications,
                                     Func<string, T>? stdoutSelector,
