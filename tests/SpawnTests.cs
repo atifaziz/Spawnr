@@ -2,6 +2,7 @@ namespace Spawnr.Tests
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using System.Reactive;
     using NUnit.Framework;
 
@@ -155,6 +156,29 @@ namespace Spawnr.Tests
 
             var process = processRef.Value!;
             Assert.That(process.TryKillCalled, Is.True);
+        }
+
+        [Test]
+        public void NonZeroExitCodeProducesError()
+        {
+            var processRef = Ref.Create((TestProcess?)null);
+            var notifications = new List<Notification<string>>();
+
+            using var subscription = Spawn(SpawnOptions, notifications,
+                                           s => $"out: {s}",
+                                           s => $"err: {s}",
+                                           processRef);
+
+            var process = processRef.Value!;
+            process.End(42);
+
+            Assert.That(notifications.Count, Is.EqualTo(1));
+
+            var notification = notifications.Single();
+            Assert.That(notification.Kind, Is.EqualTo(NotificationKind.OnError));
+            Assert.That(notification.Exception, Is.TypeOf<Exception>());
+            Assert.That(notification.Exception.Message,
+                        Is.EqualTo("Process \"dummy\" (launched as the ID 123) ended with the non-zero exit code 42."));
         }
 
         static IDisposable Spawn<T>(SpawnOptions options,
