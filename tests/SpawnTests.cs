@@ -174,6 +174,7 @@ namespace Spawnr.Tests
                                          {
                                              var tp = process.Value = new TestProcess(psi)
                                              {
+                                                 Id = 123,
                                                  StartException = null,
                                                  BeginErrorReadLineException = null,
                                                  BeginOutputReadLineException = null,
