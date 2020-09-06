@@ -46,10 +46,14 @@ namespace Spawnr
         public Process(SysProcess process) =>
             _process = process;
 
-        public int Id { get; }
-        public int ExitCode { get; }
+        public int Id => _process.Id;
+        public int ExitCode => _process.ExitCode;
 
-        public bool EnableRaisingEvents { get; set; }
+        public bool EnableRaisingEvents
+        {
+            get => _process.EnableRaisingEvents;
+            set => _process.EnableRaisingEvents = value;
+        }
 
         public void Start() => _ = _process.Start();
 
