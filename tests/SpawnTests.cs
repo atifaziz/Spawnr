@@ -46,12 +46,12 @@ namespace Spawnr.Tests
             process.FireOutputDataReceived("foo");
             process.FireOutputDataReceived("bar");
             process.FireOutputDataReceived("baz");
-            process.FireOutputDataReceived(null);
+
             process.FireErrorDataReceived("foo");
             process.FireErrorDataReceived("bar");
             process.FireErrorDataReceived("baz");
-            process.FireErrorDataReceived(null);
-            process.FireExited();
+
+            process.End();
 
             Assert.That(process.DisposeCalled, Is.True);
 

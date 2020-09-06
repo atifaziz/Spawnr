@@ -38,11 +38,27 @@ namespace Spawnr.Tests
                 return data => (DataReceivedEventArgs)ctor.Invoke(new[] { data });
             });
 
+        bool _isOutputClosed, _isErrorClosed;
+
+        public bool IsOutputClosed => _isOutputClosed;
+        public bool IsErrorClosed  => _isErrorClosed;
+
         public void FireErrorDataReceived(string? data) =>
-            ErrorDataReceived?.Invoke(this, DataReceivedEventArgsFactory.Value(data));
+            FireDataReceived(ref _isErrorClosed, ErrorDataReceived, data);
 
         public void FireOutputDataReceived(string? data) =>
-            OutputDataReceived?.Invoke(this, DataReceivedEventArgsFactory.Value(data));
+            FireDataReceived(ref _isOutputClosed, OutputDataReceived, data);
+
+        void FireDataReceived(ref bool isClosed, DataReceivedEventHandler? handler, string? data)
+        {
+            if (data is null)
+            {
+                if (isClosed)
+                    throw new InvalidOperationException("Output/Error stream was already closed.");
+                isClosed = true;
+            }
+            handler?.Invoke(this, DataReceivedEventArgsFactory.Value(data));
+        }
 
         public event EventHandler? EnteringStart;
         public event EventHandler? LeavingStart;
@@ -78,6 +94,14 @@ namespace Spawnr.Tests
         public void Start() => OnCall(ref StartCalled,
                                       EnteringStart, LeavingStart,
                                       StartException);
+
+        public void End(int exitCode = 0)
+        {
+            FireErrorDataReceived(null);
+            FireOutputDataReceived(null);
+            ExitCode = exitCode;
+            FireExited();
+        }
 
         public bool TryKill([MaybeNullWhen(true)] out Exception exception)
         {
