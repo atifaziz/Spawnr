@@ -82,6 +82,38 @@ namespace Spawnr.Tests
         }
 
         [Test]
+        public void OutputsAfterDisposeAreSuppressed()
+        {
+            var notifications = new List<Notification<string>>();
+            using var subscription =
+                TestSpawn(SpawnOptions, notifications,
+                          s => $"out: {s}",
+                          s => $"err: {s}");
+            subscription.Dispose();
+            var process = subscription.Tag;
+            process.FireOutputDataReceived("output");
+            process.FireErrorDataReceived("error");
+            process.End(0);
+
+            Assert.That(notifications, Is.Empty);
+        }
+
+        [Test]
+        public void ErrorAfterDisposeIsSuppressed()
+        {
+            var notifications = new List<Notification<string>>();
+            using var subscription =
+                TestSpawn(SpawnOptions, notifications,
+                          s => $"out: {s}",
+                          s => $"err: {s}");
+            var process = subscription.Tag;
+            subscription.Dispose();
+            process.End(42);
+
+            Assert.That(notifications, Is.Empty);
+        }
+
+        [Test]
         public void ErrorOnStart()
         {
             var notifications = new List<Notification<string>>();
