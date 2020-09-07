@@ -33,15 +33,15 @@ namespace Spawnr
 
         public static ISpawnable<KeyValuePair<T, string>>
             Spawn<T>(string path, ProgramArguments args,
-                     T stdoutKey, T stderrKey) =>
-            Spawner.Default.Spawn(path, args, stdoutKey, stderrKey);
+                     T stdout, T stderr) =>
+            Spawner.Default.Spawn(path, args, stdout, stderr);
 
         public static ISpawnable<T>
             Spawn<T>(string path,
                      ProgramArguments args,
-                     Func<string, T>? stdoutSelector,
-                     Func<string, T>? stderrSelector) =>
-            Spawner.Default.Spawn(path, args, stdoutSelector, stderrSelector);
+                     Func<string, T>? stdout,
+                     Func<string, T>? stderr) =>
+            Spawner.Default.Spawn(path, args, stdout, stderr);
     }
 
     public partial interface ISpawnable<out T> : IObservable<T>,
@@ -94,8 +94,8 @@ namespace Spawnr
     public interface ISpawner
     {
         IObservable<T> Spawn<T>(string path, SpawnOptions options,
-                                Func<string, T>? stdoutSelector,
-                                Func<string, T>? stderrSelector);
+                                Func<string, T>? stdout,
+                                Func<string, T>? stderr);
     }
 
     public static class SpawnerExtensions
@@ -135,20 +135,17 @@ namespace Spawnr
 
         public static ISpawnable<KeyValuePair<T, string>>
             Spawn<T>(this ISpawner spawner,
-                     string path, ProgramArguments args,
-                     T stdoutKey, T stderrKey) =>
-            spawner.Spawn(path, args, stdout => KeyValuePair.Create(stdoutKey, stdout),
-                                      stderr => KeyValuePair.Create(stderrKey, stderr));
+                     string path, ProgramArguments args, T stdout, T stderr) =>
+            spawner.Spawn(path, args, line => KeyValuePair.Create(stdout, line),
+                                      line => KeyValuePair.Create(stderr, line));
 
         public static ISpawnable<T>
             Spawn<T>(this ISpawner spawner, string path, ProgramArguments args,
-                     Func<string, T>? stdoutSelector,
-                     Func<string, T>? stderrSelector) =>
+                     Func<string, T>? stdout,
+                     Func<string, T>? stderr) =>
             Spawnable.Create<T>(SpawnOptions.Create().WithArguments(args),
                                 (observer, options) =>
-                                    spawner.Spawn(path, options,
-                                                  stdoutSelector,
-                                                  stderrSelector)
+                                    spawner.Spawn(path, options, stdout, stderr)
                                            .Subscribe(observer));
     }
 
@@ -159,12 +156,10 @@ namespace Spawnr
         sealed class Implementation : ISpawner
         {
             public IObservable<T> Spawn<T>(string path, SpawnOptions options,
-                                           Func<string, T>? stdoutSelector,
-                                           Func<string, T>? stderrSelector) =>
+                                           Func<string, T>? stdout,
+                                           Func<string, T>? stderr) =>
                 Observable.Create<T>(observer =>
-                    Spawner.Spawn(path, options,
-                                  stdoutSelector, stderrSelector,
-                                  observer));
+                    Spawner.Spawn(path, options, stdout, stderr, observer));
         }
 
         [Flags]
@@ -199,11 +194,11 @@ namespace Spawnr
         }
 
         static IDisposable Spawn<T>(string path, SpawnOptions options,
-                                    Func<string, T>? stdoutSelector,
-                                    Func<string, T>? stderrSelector,
+                                    Func<string, T>? stdout,
+                                    Func<string, T>? stderr,
                                     IObserver<T> observer)
         {
-            var outputFlags = (stderrSelector, stdoutSelector) switch
+            var outputFlags = (stderr, stdout) switch
             {
                 ({}  , null) => ControlFlags.ErrorReceived,
                 (null, {}  ) => ControlFlags.OutputReceived,
@@ -215,8 +210,8 @@ namespace Spawnr
             {
                 CreateNoWindow         = true,
                 UseShellExecute        = false,
-                RedirectStandardOutput = stdoutSelector is {},
-                RedirectStandardError  = stderrSelector is {},
+                RedirectStandardOutput = stdout is {},
+                RedirectStandardError  = stderr is {},
             };
 
             options.Update(psi);
@@ -227,10 +222,10 @@ namespace Spawnr
             var pid = -1;
             var control = new Control();
 
-            if (stdoutSelector is {})
-                process.OutputDataReceived += CreateDataEventHandler(ControlFlags.OutputReceived, stdoutSelector);
-            if (stderrSelector is {})
-                process.ErrorDataReceived += CreateDataEventHandler(ControlFlags.ErrorReceived, stderrSelector);
+            if (stdout is {})
+                process.OutputDataReceived += CreateDataEventHandler(ControlFlags.OutputReceived, stdout);
+            if (stderr is {})
+                process.ErrorDataReceived += CreateDataEventHandler(ControlFlags.ErrorReceived, stderr);
 
             process.Exited += delegate { OnExited(control); };
 
@@ -271,9 +266,9 @@ namespace Spawnr
 
             try
             {
-                if (stdoutSelector is {})
+                if (stdout is {})
                     process.BeginOutputReadLine();
-                if (stderrSelector is {})
+                if (stderr is {})
                     process.BeginErrorReadLine();
             }
             catch

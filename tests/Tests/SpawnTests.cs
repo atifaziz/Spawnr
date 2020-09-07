@@ -362,7 +362,7 @@ namespace Spawnr.Tests
 
             static ISpawnable<string> TestAppError() =>
                 Spawn("dotnet", ProgramArguments.Var(_testAppPath!),
-                      stdoutSelector: null, s => s);
+                      stdout: null, stderr: s => s);
 
             [Test]
             public void Nop()
