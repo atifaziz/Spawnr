@@ -285,7 +285,8 @@ namespace Spawnr
                     bool killed, exited, outputsReceived;
                     lock (control)
                     {
-                        control[flags] = true;
+                        if (args.Data is null)
+                            control[flags] = true; // EOF
                         killed = control.Killed;
                         exited = control.Exited;
                         outputsReceived = control[outputFlags];
