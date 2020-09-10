@@ -48,12 +48,13 @@ namespace Spawnr
                              System.Environment.CurrentDirectory,
                              ImmutableArray.CreateRange(from DictionaryEntry e in System.Environment.GetEnvironmentVariables()
                                                         select KeyValuePair.Create((string)e.Key, (string)e.Value)),
-                             null,
+                             null, null,
                              psi => new Process(new SysProcess { StartInfo = psi }),
                              _ => null);
 
         SpawnOptions(ProgramArguments arguments, string workingDirectory,
                      ImmutableArray<KeyValuePair<string, string>> environment,
+                     IObservable<OutputLine>? input,
                      Func<ExitCodeErrorArgs, Exception?>? exitCodeErrorFunction,
                      Func<ProcessStartInfo, IProcess> processFactory,
                      Func<Exception, Exception?> killErrorFunction)
@@ -61,6 +62,7 @@ namespace Spawnr
             Arguments = arguments;
             WorkingDirectory = workingDirectory;
             Environment = environment;
+            Input = input;
             ExitCodeErrorFunction = exitCodeErrorFunction;
             ProcessFactory = processFactory;
             KillErrorFunction = killErrorFunction;
@@ -68,12 +70,13 @@ namespace Spawnr
 
         public SpawnOptions(SpawnOptions other) :
             this(other.Arguments, other.WorkingDirectory, other.Environment,
-                 other.ExitCodeErrorFunction,
+                 other.Input, other.ExitCodeErrorFunction,
                  other.ProcessFactory, other.KillErrorFunction) {}
 
         public ProgramArguments Arguments { get; private set; }
         public string WorkingDirectory { get; private set; }
         public ImmutableArray<KeyValuePair<string, string>> Environment { get; private set; }
+        public IObservable<OutputLine>? Input { get; private set; }
         public Func<ExitCodeErrorArgs, Exception?>? ExitCodeErrorFunction { get; private set; }
         internal Func<ProcessStartInfo, IProcess> ProcessFactory { get; private set; }
         internal Func<Exception, Exception?> KillErrorFunction { get; private set; }
@@ -90,6 +93,10 @@ namespace Spawnr
             => value is null ? throw new ArgumentNullException(nameof(value))
              : value == Arguments || value.Count == 0 && Arguments.Count == 0 ? this
              : new SpawnOptions(this) { Arguments = value };
+
+        public SpawnOptions WithInput(IObservable<OutputLine>? value)
+            => value == Input ? this
+             : new SpawnOptions(this) { Input = value };
 
         public SpawnOptions WithExitCodeErrorFunction(Func<ExitCodeErrorArgs, Exception?>? value)
             => value == ExitCodeErrorFunction ? this

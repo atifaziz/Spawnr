@@ -387,11 +387,11 @@ namespace Spawnr.Tests
 
             enum Std { Out, Err }
 
-            static ISpawnable<(StandardOutputKind Stream, string Line)>
+            static ISpawnable<OutputLine>
                 TestAppStreams() =>
                 Spawn("dotnet", ProgramArguments.Var(_testAppPath!),
-                      null, s => (StandardOutputKind.Output, s),
-                            s => (StandardOutputKind.Error, s));
+                      null, s => OutputLine.Output(s),
+                            s => OutputLine.Error(s));
 
             static ISpawnable<string>
                 TestAppOutput(IObservable<string>? stdin = null) =>
@@ -494,7 +494,7 @@ namespace Spawnr.Tests
                 var stdin = commands.ToObservable();
 
                 var (stdout, stderr) =
-                    TestAppStreams().WithInput(stdin)
+                    TestAppStreams().Input(stdin)
                                     .Partition(e => e is (StandardOutputKind.Output, _),
                                                (stdout, stderr) => (from e in stdout select e.Line,
                                                                     from e in stderr select e.Line));

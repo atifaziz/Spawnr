@@ -27,8 +27,6 @@ namespace Spawnr
     using System.Reactive.Disposables;
     using System.Reactive.Linq;
 
-    public enum StandardOutputKind { Output, Error }
-
     public static class SpawnModule
     {
         public static ISpawnable<string> Spawn(string path, ProgramArguments args) =>
@@ -37,7 +35,7 @@ namespace Spawnr
         public static ISpawnable<string> Spawn(string path, ProgramArguments args,
                                                IObservable<string>? stdin) =>
             Spawner.Default.Spawn(path, args, null, output => output, null)
-                           .WithInput(stdin);
+                           .Input(stdin);
 
         public static ISpawnable<KeyValuePair<T, string>>
             Spawn<T>(string path, ProgramArguments args,
@@ -49,7 +47,7 @@ namespace Spawnr
             Spawn<T>(string path, ProgramArguments args,
                      IObservable<string>? stdin, T stdout, T stderr) =>
             Spawner.Default.Spawn(path, args, null, stdout, stderr)
-                           .WithInput(stdin);
+                           .Input(stdin);
 
         public static ISpawnable<T>
             Spawn<T>(string path,
@@ -65,50 +63,41 @@ namespace Spawnr
                      Func<string, T>? stdout,
                      Func<string, T>? stderr) =>
             Spawner.Default.Spawn(path, args, null, stdout, stderr)
-                           .WithInput(stdin);
+                           .Input(stdin);
     }
 
     public partial interface ISpawnable<out T> : IObservable<T>,
                                                  IEnumerable<T>
     {
         SpawnOptions Options { get; }
-        IObservable<(StandardOutputKind Kind, string Line)>? Input { get; }
         ISpawnable<T> WithOptions(SpawnOptions options);
-        ISpawnable<T> WithInput(IObservable<(StandardOutputKind, string)>? value);
     }
 
     static partial class Spawnable
     {
         public static ISpawnable<T>
             Create<T>(SpawnOptions options,
-                      IObservable<(StandardOutputKind, string)>? input,
-                      Func<ISpawnable<T>, IObserver<T>, IDisposable> subscriber) =>
-            new Implementation<T>(options, input, subscriber);
+                      Func<SpawnOptions, IObserver<T>, IDisposable> subscriber) =>
+            new Implementation<T>(options, subscriber);
 
         sealed partial class Implementation<T> : ISpawnable<T>
         {
-            readonly Func<ISpawnable<T>, IObserver<T>, IDisposable> _subscriber;
+            readonly Func<SpawnOptions, IObserver<T>, IDisposable> _subscriber;
 
             public Implementation(SpawnOptions options,
-                                  IObservable<(StandardOutputKind, string)>? input,
-                                  Func<ISpawnable<T>, IObserver<T>, IDisposable> subscriber)
+                                  Func<SpawnOptions, IObserver<T>, IDisposable> subscriber)
             {
                 Options = options ?? throw new ArgumentNullException(nameof(options));
-                Input = input;
                 _subscriber = subscriber ?? throw new ArgumentNullException(nameof(subscriber));
             }
 
             public SpawnOptions Options { get; }
-            public IObservable<(StandardOutputKind Kind, string Line)>? Input { get; }
 
             public ISpawnable<T> WithOptions(SpawnOptions value) =>
-                ReferenceEquals(Options, value) ? this : Create(value, Input, _subscriber);
-
-            public ISpawnable<T> WithInput(IObservable<(StandardOutputKind, string)>? value) =>
-                ReferenceEquals(Input, value) ? this : Create(Options, value, _subscriber);
+                ReferenceEquals(Options, value) ? this : Create(value, _subscriber);
 
             public IDisposable Subscribe(IObserver<T> observer) =>
-                _subscriber(this, observer);
+                _subscriber(Options, observer);
 
             public IEnumerator<T> GetEnumerator() =>
                 this.ToEnumerable().GetEnumerator();
@@ -122,19 +111,19 @@ namespace Spawnr
         public static IEnumerable<T> AsEnumerable<T>(this ISpawnable<T> spawnable) =>
             spawnable is null ? throw new ArgumentNullException(nameof(spawnable))
                               : spawnable;
-        public static ISpawnable<T> WithInput<T>(this ISpawnable<T> spawnable,
-                                                 IObservable<string>? value) =>
-            spawnable.WithInput(value is {} stdin
-                                ? from line in stdin
-                                  select (StandardOutputKind.Output, line)
-                                : null);
 
+        public static ISpawnable<T> Input<T>(this ISpawnable<T> spawnable,
+                                             IObservable<string>? value) =>
+            spawnable.WithOptions(
+                spawnable.Options.WithInput(value is {} stdin
+                                            ? from line in stdin
+                                              select OutputLine.Output(line)
+                                            : null));
     }
 
     public interface ISpawner
     {
         IObservable<T> Spawn<T>(string path, SpawnOptions options,
-                                IObservable<(StandardOutputKind, string)>? stdin,
                                 Func<string, T>? stdout,
                                 Func<string, T>? stderr);
     }
@@ -171,6 +160,9 @@ namespace Spawnr
         public static ISpawnable<T> WorkingDirectory<T>(this ISpawnable<T> source, string value) =>
             source.WithOptions(source.Options.WithWorkingDirectory(value));
 
+        public static ISpawnable<T> Input<T>(this ISpawnable<T> source, IObservable<OutputLine>? value) =>
+            source.WithOptions(source.Options.WithInput(value));
+
         public static ISpawnable<string> Spawn(this ISpawner spawner, string path, ProgramArguments args) =>
             spawner.Spawn(path, args, output => output, null);
 
@@ -182,7 +174,7 @@ namespace Spawnr
         public static ISpawnable<KeyValuePair<T, string>>
             Spawn<T>(this ISpawner spawner,
                      string path, ProgramArguments args,
-                     IObservable<(StandardOutputKind, string)>? stdin, T stdout, T stderr) =>
+                     IObservable<OutputLine>? stdin, T stdout, T stderr) =>
             spawner.Spawn(path, args, stdin,
                           line => KeyValuePair.Create(stdout, line),
                           line => KeyValuePair.Create(stderr, line));
@@ -195,28 +187,28 @@ namespace Spawnr
 
         public static ISpawnable<T>
             Spawn<T>(this ISpawner spawner, string path, ProgramArguments args,
-                     IObservable<(StandardOutputKind, string)>? stdin,
+                     IObservable<OutputLine>? stdin,
                      Func<string, T>? stdout,
                      Func<string, T>? stderr) =>
-            Spawnable.Create<T>(SpawnOptions.Create().WithArguments(args), stdin,
-                                (self, observer) =>
-                                    spawner.Spawn(path, self.Options, self.Input, stdout, stderr)
+            Spawnable.Create<T>(SpawnOptions.Create()
+                                            .WithArguments(args)
+                                            .WithInput(stdin),
+                                (options, observer) =>
+                                    spawner.Spawn(path, options, stdout, stderr)
                                            .Subscribe(observer));
 
         public static ISpawnable<string> Pipe(this IObservable<string> first,
                                               ISpawnable<string> second) =>
-            second.WithInput(first);
+            second.Input(first);
 
-        public static ISpawnable<(StandardOutputKind Kind, string Line)>
-            Pipe(this ISpawnable<(StandardOutputKind, string)> first,
-                 ISpawnable<(StandardOutputKind, string)> second) =>
-            second.WithInput(first);
+        public static ISpawnable<OutputLine>
+            Pipe(this ISpawnable<OutputLine> first, ISpawnable<OutputLine> second) =>
+            second.Input(first);
 
-        public static ISpawnable<(StandardOutputKind Kind, string Line)>
-            Pipe(this IObservable<string> first,
-                 ISpawnable<(StandardOutputKind, string)> second) =>
-            second.WithInput(from line in first
-                             select (StandardOutputKind.Output, line));
+        public static ISpawnable<OutputLine>
+            Pipe(this IObservable<string> first, ISpawnable<OutputLine> second) =>
+            second.Input(from line in first
+                         select OutputLine.Output(line));
     }
 
     public static class Spawner
@@ -226,12 +218,10 @@ namespace Spawnr
         sealed class Implementation : ISpawner
         {
             public IObservable<T> Spawn<T>(string path, SpawnOptions options,
-                                           IObservable<(StandardOutputKind, string)>? stdin,
                                            Func<string, T>? stdout,
                                            Func<string, T>? stderr) =>
                 Observable.Create<T>(observer =>
-                    Spawner.Spawn(path, options,
-                                  stdin, stdout, stderr, observer));
+                    Spawner.Spawn(path, options, stdout, stderr, observer));
         }
 
         [Flags]
@@ -266,7 +256,6 @@ namespace Spawnr
         }
 
         static IDisposable Spawn<T>(string path, SpawnOptions options,
-                                    IObservable<(StandardOutputKind, string)>? stdin,
                                     Func<string, T>? stdout,
                                     Func<string, T>? stderr,
                                     IObserver<T> observer)
@@ -283,7 +272,7 @@ namespace Spawnr
             {
                 CreateNoWindow         = true,
                 UseShellExecute        = false,
-                RedirectStandardInput  = stdin is {},
+                RedirectStandardInput  = options.Input is {},
                 RedirectStandardOutput = stdout is {},
                 RedirectStandardError  = stderr is {},
             };
@@ -346,12 +335,12 @@ namespace Spawnr
                 if (stderr is {})
                     process.BeginErrorReadLine();
 
-                if (stdin is {})
+                if (options.Input is {})
                 {
                     var writer = process.StandardInput;
                     var effects =
                         Observable.Concat(
-                            from n in stdin.Materialize()
+                            from n in options.Input.Materialize()
                             select Observable.FromAsync(async () =>
                             {
                                 try
