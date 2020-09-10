@@ -387,10 +387,11 @@ namespace Spawnr.Tests
 
             enum Std { Out, Err }
 
-            static ISpawnable<(Std Stream, string Line)>
-                TestAppStreams(IObservable<string>? stdin = null) =>
+            static ISpawnable<(StandardOutputKind Stream, string Line)>
+                TestAppStreams() =>
                 Spawn("dotnet", ProgramArguments.Var(_testAppPath!),
-                      stdin, s => (Std.Out, s), s => (Std.Err, s));
+                      null, s => (StandardOutputKind.Output, s),
+                            s => (StandardOutputKind.Error, s));
 
             static ISpawnable<string>
                 TestAppOutput(IObservable<string>? stdin = null) =>
@@ -457,23 +458,25 @@ namespace Spawnr.Tests
             {
                 var (stdout, stderr) =
                     TestAppStreams().AddArgument("lorem", "3", "2", "4")
-                                    .Partition(s => s.Stream == Std.Out);
+                                    .Partition(e => e is (StandardOutputKind.Output, _),
+                                               (stdout, stderr) => (from e in stdout select e.Line,
+                                                                    from e in stderr select e.Line));
 
                 Assert.That(stdout, Is.EqualTo(new[]
                 {
-                    (Std.Out, "Lorem ipsum dolor sit amet, consectetur adipiscing elit."),
-                    (Std.Out, "Nullam suscipit nunc non nulla euismod ornare."),
-                    (Std.Out, "Ut auctor felis lectus, eu cursus dolor ullamcorper ac."),
-                    (Std.Out, "Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus."),
-                    (Std.Out, "Cras at ligula ut odio molestie egestas."),
-                    (Std.Out, "Sed sit amet dui porttitor, bibendum libero sed, porta velit."),
-                    (Std.Out, "Donec tristique risus vulputate elit hendrerit rutrum."),
+                    "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+                    "Nullam suscipit nunc non nulla euismod ornare.",
+                    "Ut auctor felis lectus, eu cursus dolor ullamcorper ac.",
+                    "Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus.",
+                    "Cras at ligula ut odio molestie egestas.",
+                    "Sed sit amet dui porttitor, bibendum libero sed, porta velit.",
+                    "Donec tristique risus vulputate elit hendrerit rutrum.",
                 }));
 
                 Assert.That(stderr, Is.EqualTo(new[]
                 {
-                    (Std.Err, "Nam nec gravida justo."),
-                    (Std.Err, "Cras sed semper elit."),
+                    "Nam nec gravida justo.",
+                    "Cras sed semper elit.",
                 }));
             }
 
@@ -491,23 +494,27 @@ namespace Spawnr.Tests
                 var stdin = commands.ToObservable();
 
                 var (stdout, stderr) =
-                    TestAppStreams(stdin).Partition(s => s.Stream == Std.Out);
+                    TestAppStreams().WithInput(stdin)
+                                    .Partition(e => e is (StandardOutputKind.Output, _),
+                                               (stdout, stderr) => (from e in stdout select e.Line,
+                                                                    from e in stderr select e.Line));
+
 
                 Assert.That(stdout, Is.EqualTo(new[]
                 {
-                    (Std.Out, "Lorem ipsum dolor sit amet, consectetur adipiscing elit."),
-                    (Std.Out, "Nullam suscipit nunc non nulla euismod ornare."),
-                    (Std.Out, "Ut auctor felis lectus, eu cursus dolor ullamcorper ac."),
-                    (Std.Out, "Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus."),
-                    (Std.Out, "Cras at ligula ut odio molestie egestas."),
-                    (Std.Out, "Sed sit amet dui porttitor, bibendum libero sed, porta velit."),
-                    (Std.Out, "Donec tristique risus vulputate elit hendrerit rutrum."),
+                    "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+                    "Nullam suscipit nunc non nulla euismod ornare.",
+                    "Ut auctor felis lectus, eu cursus dolor ullamcorper ac.",
+                    "Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus.",
+                    "Cras at ligula ut odio molestie egestas.",
+                    "Sed sit amet dui porttitor, bibendum libero sed, porta velit.",
+                    "Donec tristique risus vulputate elit hendrerit rutrum.",
                 }));
 
                 Assert.That(stderr, Is.EqualTo(new[]
                 {
-                    (Std.Err, "Nam nec gravida justo."),
-                    (Std.Err, "Cras sed semper elit."),
+                    "Nam nec gravida justo.",
+                    "Cras sed semper elit.",
                 }));
             }
 
@@ -516,21 +523,31 @@ namespace Spawnr.Tests
             {
                 var commands = new[]
                 {
-                    "lorem 3",
+                    "lorem 3 2 1",
                     "exit",
                 };
 
-                var result =
+                var (stdout, stderr) =
                     commands.ToObservable()
-                            .Pipe(TestAppOutput())
-                            .Pipe(TestAppOutput().AddArgument("upper"))
-                            .Pipe(TestAppOutput().AddArgument("prefix", "> "));
+                            .Pipe(TestAppStreams())
+                            .Pipe(TestAppStreams().AddArgument("upper"))
+                            .Pipe(TestAppStreams().AddArgument("prefix", "> "))
+                            .Partition(e => e is (StandardOutputKind.Output, _),
+                                       (stdout, stderr) => (from e in stdout select e.Line,
+                                                            from e in stderr select e.Line));
 
-                Assert.That(result, Is.EqualTo(new[]
+                Assert.That(stdout, Is.EqualTo(new[]
                 {
                     "> LOREM IPSUM DOLOR SIT AMET, CONSECTETUR ADIPISCING ELIT.",
                     "> NULLAM SUSCIPIT NUNC NON NULLA EUISMOD ORNARE.",
                     "> UT AUCTOR FELIS LECTUS, EU CURSUS DOLOR ULLAMCORPER AC.",
+                    "> ORCI VARIUS NATOQUE PENATIBUS ET MAGNIS DIS PARTURIENT MONTES, NASCETUR RIDICULUS MUS."
+                }));
+
+                Assert.That(stderr, Is.EqualTo(new[]
+                {
+                    "Nam nec gravida justo.",
+                    "Cras sed semper elit.",
                 }));
             }
         }

@@ -27,6 +27,8 @@ namespace Spawnr
     using System.Reactive.Disposables;
     using System.Reactive.Linq;
 
+    public enum StandardOutputKind { Output, Error }
+
     public static class SpawnModule
     {
         public static ISpawnable<string> Spawn(string path, ProgramArguments args) =>
@@ -34,7 +36,8 @@ namespace Spawnr
 
         public static ISpawnable<string> Spawn(string path, ProgramArguments args,
                                                IObservable<string>? stdin) =>
-            Spawner.Default.Spawn(path, args, stdin, output => output, null);
+            Spawner.Default.Spawn(path, args, null, output => output, null)
+                           .WithInput(stdin);
 
         public static ISpawnable<KeyValuePair<T, string>>
             Spawn<T>(string path, ProgramArguments args,
@@ -45,7 +48,8 @@ namespace Spawnr
         public static ISpawnable<KeyValuePair<T, string>>
             Spawn<T>(string path, ProgramArguments args,
                      IObservable<string>? stdin, T stdout, T stderr) =>
-            Spawner.Default.Spawn(path, args, stdin, stdout, stderr);
+            Spawner.Default.Spawn(path, args, null, stdout, stderr)
+                           .WithInput(stdin);
 
         public static ISpawnable<T>
             Spawn<T>(string path,
@@ -60,22 +64,24 @@ namespace Spawnr
                      IObservable<string>? stdin,
                      Func<string, T>? stdout,
                      Func<string, T>? stderr) =>
-            Spawner.Default.Spawn(path, args, stdin, stdout, stderr);
+            Spawner.Default.Spawn(path, args, null, stdout, stderr)
+                           .WithInput(stdin);
     }
 
     public partial interface ISpawnable<out T> : IObservable<T>,
                                                  IEnumerable<T>
     {
         SpawnOptions Options { get; }
-        IObservable<string>? Input { get; }
+        IObservable<(StandardOutputKind Kind, string Line)>? Input { get; }
         ISpawnable<T> WithOptions(SpawnOptions options);
-        ISpawnable<T> WithInput(IObservable<string>? value);
+        ISpawnable<T> WithInput(IObservable<(StandardOutputKind, string)>? value);
     }
 
     static partial class Spawnable
     {
         public static ISpawnable<T>
-            Create<T>(SpawnOptions options, IObservable<string>? input,
+            Create<T>(SpawnOptions options,
+                      IObservable<(StandardOutputKind, string)>? input,
                       Func<ISpawnable<T>, IObserver<T>, IDisposable> subscriber) =>
             new Implementation<T>(options, input, subscriber);
 
@@ -83,7 +89,8 @@ namespace Spawnr
         {
             readonly Func<ISpawnable<T>, IObserver<T>, IDisposable> _subscriber;
 
-            public Implementation(SpawnOptions options, IObservable<string>? input,
+            public Implementation(SpawnOptions options,
+                                  IObservable<(StandardOutputKind, string)>? input,
                                   Func<ISpawnable<T>, IObserver<T>, IDisposable> subscriber)
             {
                 Options = options ?? throw new ArgumentNullException(nameof(options));
@@ -92,12 +99,12 @@ namespace Spawnr
             }
 
             public SpawnOptions Options { get; }
-            public IObservable<string>? Input { get; }
+            public IObservable<(StandardOutputKind Kind, string Line)>? Input { get; }
 
             public ISpawnable<T> WithOptions(SpawnOptions value) =>
                 ReferenceEquals(Options, value) ? this : Create(value, Input, _subscriber);
 
-            public ISpawnable<T> WithInput(IObservable<string>? value) =>
+            public ISpawnable<T> WithInput(IObservable<(StandardOutputKind, string)>? value) =>
                 ReferenceEquals(Input, value) ? this : Create(Options, value, _subscriber);
 
             public IDisposable Subscribe(IObserver<T> observer) =>
@@ -115,12 +122,19 @@ namespace Spawnr
         public static IEnumerable<T> AsEnumerable<T>(this ISpawnable<T> spawnable) =>
             spawnable is null ? throw new ArgumentNullException(nameof(spawnable))
                               : spawnable;
+        public static ISpawnable<T> WithInput<T>(this ISpawnable<T> spawnable,
+                                                 IObservable<string>? value) =>
+            spawnable.WithInput(value is {} stdin
+                                ? from line in stdin
+                                  select (StandardOutputKind.Output, line)
+                                : null);
+
     }
 
     public interface ISpawner
     {
         IObservable<T> Spawn<T>(string path, SpawnOptions options,
-                                IObservable<string>? stdin,
+                                IObservable<(StandardOutputKind, string)>? stdin,
                                 Func<string, T>? stdout,
                                 Func<string, T>? stderr);
     }
@@ -168,7 +182,7 @@ namespace Spawnr
         public static ISpawnable<KeyValuePair<T, string>>
             Spawn<T>(this ISpawner spawner,
                      string path, ProgramArguments args,
-                     IObservable<string>? stdin, T stdout, T stderr) =>
+                     IObservable<(StandardOutputKind, string)>? stdin, T stdout, T stderr) =>
             spawner.Spawn(path, args, stdin,
                           line => KeyValuePair.Create(stdout, line),
                           line => KeyValuePair.Create(stderr, line));
@@ -181,7 +195,7 @@ namespace Spawnr
 
         public static ISpawnable<T>
             Spawn<T>(this ISpawner spawner, string path, ProgramArguments args,
-                     IObservable<string>? stdin,
+                     IObservable<(StandardOutputKind, string)>? stdin,
                      Func<string, T>? stdout,
                      Func<string, T>? stderr) =>
             Spawnable.Create<T>(SpawnOptions.Create().WithArguments(args), stdin,
@@ -189,8 +203,20 @@ namespace Spawnr
                                     spawner.Spawn(path, self.Options, self.Input, stdout, stderr)
                                            .Subscribe(observer));
 
-        public static ISpawnable<string> Pipe(this IObservable<string> first, ISpawnable<string> second) =>
+        public static ISpawnable<string> Pipe(this IObservable<string> first,
+                                              ISpawnable<string> second) =>
             second.WithInput(first);
+
+        public static ISpawnable<(StandardOutputKind Kind, string Line)>
+            Pipe(this ISpawnable<(StandardOutputKind, string)> first,
+                 ISpawnable<(StandardOutputKind, string)> second) =>
+            second.WithInput(first);
+
+        public static ISpawnable<(StandardOutputKind Kind, string Line)>
+            Pipe(this IObservable<string> first,
+                 ISpawnable<(StandardOutputKind, string)> second) =>
+            second.WithInput(from line in first
+                             select (StandardOutputKind.Output, line));
     }
 
     public static class Spawner
@@ -200,7 +226,7 @@ namespace Spawnr
         sealed class Implementation : ISpawner
         {
             public IObservable<T> Spawn<T>(string path, SpawnOptions options,
-                                           IObservable<string>? stdin,
+                                           IObservable<(StandardOutputKind, string)>? stdin,
                                            Func<string, T>? stdout,
                                            Func<string, T>? stderr) =>
                 Observable.Create<T>(observer =>
@@ -240,7 +266,7 @@ namespace Spawnr
         }
 
         static IDisposable Spawn<T>(string path, SpawnOptions options,
-                                    IObservable<string>? stdin,
+                                    IObservable<(StandardOutputKind, string)>? stdin,
                                     Func<string, T>? stdout,
                                     Func<string, T>? stderr,
                                     IObserver<T> observer)
@@ -332,8 +358,12 @@ namespace Spawnr
                                 {
                                     switch (n.Kind)
                                     {
-                                        case NotificationKind.OnNext:
-                                            await writer.WriteLineAsync(n.Value).ConfigureAwait(false);
+                                        case NotificationKind.OnNext when n.Value is (StandardOutputKind.Output, var line):
+                                            await writer.WriteLineAsync(line).ConfigureAwait(false);
+                                            break;
+                                        case NotificationKind.OnNext when n.Value is (StandardOutputKind.Error, var line)
+                                                                       && stderr is {}:
+                                            observer.OnNext(stderr(line));
                                             break;
                                         case NotificationKind.OnError:
                                             throw n.Exception;
