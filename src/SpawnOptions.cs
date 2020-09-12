@@ -48,13 +48,15 @@ namespace Spawnr
                              System.Environment.CurrentDirectory,
                              ImmutableArray.CreateRange(from DictionaryEntry e in System.Environment.GetEnvironmentVariables()
                                                         select KeyValuePair.Create((string)e.Key, (string)e.Value)),
-                             null, null,
+                             input: null, suppressOutput: false, suppressError: false,
+                             exitCodeErrorFunction: null,
                              psi => new Process(new SysProcess { StartInfo = psi }),
                              _ => null);
 
         SpawnOptions(ProgramArguments arguments, string workingDirectory,
                      ImmutableArray<KeyValuePair<string, string>> environment,
                      IObservable<OutputLine>? input,
+                     bool suppressOutput, bool suppressError,
                      Func<ExitCodeErrorArgs, Exception?>? exitCodeErrorFunction,
                      Func<ProcessStartInfo, IProcess> processFactory,
                      Func<Exception, Exception?> killErrorFunction)
@@ -63,6 +65,8 @@ namespace Spawnr
             WorkingDirectory = workingDirectory;
             Environment = environment;
             Input = input;
+            SuppressOutput = suppressOutput;
+            SuppressError = suppressError;
             ExitCodeErrorFunction = exitCodeErrorFunction;
             ProcessFactory = processFactory;
             KillErrorFunction = killErrorFunction;
@@ -70,13 +74,18 @@ namespace Spawnr
 
         public SpawnOptions(SpawnOptions other) :
             this(other.Arguments, other.WorkingDirectory, other.Environment,
-                 other.Input, other.ExitCodeErrorFunction,
+                 other.Input, other.SuppressOutput, other.SuppressError,
+                 other.ExitCodeErrorFunction,
                  other.ProcessFactory, other.KillErrorFunction) {}
 
         public ProgramArguments Arguments { get; private set; }
         public string WorkingDirectory { get; private set; }
         public ImmutableArray<KeyValuePair<string, string>> Environment { get; private set; }
         public IObservable<OutputLine>? Input { get; private set; }
+        public bool SuppressOutput { get; private set; }
+        public bool SuppressError { get; private set; }
+        internal bool CaptureOutput => !SuppressOutput;
+        internal bool CaptureError => !SuppressError;
         public Func<ExitCodeErrorArgs, Exception?>? ExitCodeErrorFunction { get; private set; }
         internal Func<ProcessStartInfo, IProcess> ProcessFactory { get; private set; }
         internal Func<Exception, Exception?> KillErrorFunction { get; private set; }
@@ -97,6 +106,14 @@ namespace Spawnr
         public SpawnOptions WithInput(IObservable<OutputLine>? value)
             => value == Input ? this
              : new SpawnOptions(this) { Input = value };
+
+        public SpawnOptions WithSuppressOutput(bool value)
+            => value == SuppressOutput ? this
+             : new SpawnOptions(this) { SuppressOutput = value };
+
+        public SpawnOptions WithSuppressError(bool value)
+            => value == SuppressError ? this
+             : new SpawnOptions(this) { SuppressError = value };
 
         public SpawnOptions WithExitCodeErrorFunction(Func<ExitCodeErrorArgs, Exception?>? value)
             => value == ExitCodeErrorFunction ? this
