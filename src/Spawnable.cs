@@ -28,9 +28,9 @@ namespace Spawnr
         ISpawnable<T> WithOptions(SpawnOptions options);
     }
 
-    static partial class Spawnable
+    public static partial class Spawnable
     {
-        public static ISpawnable<T>
+        internal static ISpawnable<T>
             Create<T>(SpawnOptions options,
                       Func<SpawnOptions, IObserver<T>, IDisposable> subscriber) =>
             new Implementation<T>(options, subscriber);
