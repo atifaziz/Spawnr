@@ -16,6 +16,7 @@
 
 namespace Spawnr
 {
+    using System;
     using System.Diagnostics;
 
     public enum StandardOutputKind { Output, Error }
@@ -42,6 +43,11 @@ namespace Spawnr
 
         public void Deconstruct(out StandardOutputKind kind, out string line) =>
             (kind, line) = (Kind, Value);
+
+        public T Match<T>(Func<string, T> output, Func<string, T> error)
+            => output is null ? throw new ArgumentNullException(nameof(output))
+             : error is null ? throw new ArgumentNullException(nameof(error))
+             : Kind == StandardOutputKind.Output ? output(Value) : error(Value);
 
         string GetDebuggerDisplay() => $"{Kind}: {Value}";
     }
