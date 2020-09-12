@@ -459,8 +459,8 @@ namespace Spawnr.Tests
                 var (stdout, stderr) =
                     TestAppStreams().AddArgument("lorem", "3", "2", "4")
                                     .Partition(e => e is (StandardOutputKind.Output, _),
-                                               (stdout, stderr) => (from e in stdout select e.Line,
-                                                                    from e in stderr select e.Line));
+                                               (stdout, stderr) => (from e in stdout select e.Value,
+                                                                    from e in stderr select e.Value));
 
                 Assert.That(stdout, Is.EqualTo(new[]
                 {
@@ -496,8 +496,8 @@ namespace Spawnr.Tests
                 var (stdout, stderr) =
                     TestAppStreams().Input(stdin)
                                     .Partition(e => e is (StandardOutputKind.Output, _),
-                                               (stdout, stderr) => (from e in stdout select e.Line,
-                                                                    from e in stderr select e.Line));
+                                               (stdout, stderr) => (from e in stdout select e.Value,
+                                                                    from e in stderr select e.Value));
 
 
                 Assert.That(stdout, Is.EqualTo(new[]
@@ -533,8 +533,8 @@ namespace Spawnr.Tests
                             .Pipe(TestAppStreams().AddArgument("upper"))
                             .Pipe(TestAppStreams().AddArgument("prefix", "> "))
                             .Partition(e => e is (StandardOutputKind.Output, _),
-                                       (stdout, stderr) => (from e in stdout select e.Line,
-                                                            from e in stderr select e.Line));
+                                       (stdout, stderr) => (from e in stdout select e.Value,
+                                                            from e in stderr select e.Value));
 
                 Assert.That(stdout, Is.EqualTo(new[]
                 {

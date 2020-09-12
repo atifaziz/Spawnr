@@ -30,19 +30,19 @@ namespace Spawnr
             new OutputLine(StandardOutputKind.Error, line);
 
         public StandardOutputKind Kind { get; }
-        public string Line { get; }
+        public string Value { get; }
 
-        public OutputLine(StandardOutputKind kind, string line)
+        public OutputLine(StandardOutputKind kind, string value)
         {
             Kind = kind;
-            Line = line ?? throw new System.ArgumentNullException(nameof(line));
+            Value = value ?? throw new System.ArgumentNullException(nameof(value));
         }
 
-        public override string ToString() => Line ?? string.Empty;
+        public override string ToString() => Value ?? string.Empty;
 
         public void Deconstruct(out StandardOutputKind kind, out string line) =>
-            (kind, line) = (Kind, Line);
+            (kind, line) = (Kind, Value);
 
-        string GetDebuggerDisplay() => $"{Kind}: {Line}";
+        string GetDebuggerDisplay() => $"{Kind}: {Value}";
     }
 }
