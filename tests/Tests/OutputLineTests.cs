@@ -10,6 +10,8 @@ namespace Spawnr.Tests
         {
             var output = new OutputLine();
             Assert.That(output.Kind, Is.EqualTo(StandardOutputKind.Output));
+            Assert.That(output.IsOutput, Is.True);
+            Assert.That(output.IsError, Is.False);
             Assert.That(output.Value, Is.Null);
             Assert.That(output.ToString(), Is.Empty);
         }
@@ -19,6 +21,8 @@ namespace Spawnr.Tests
         {
             var error = OutputLine.Error("foobar");
             Assert.That(error.Kind, Is.EqualTo(StandardOutputKind.Error));
+            Assert.That(error.IsOutput, Is.False);
+            Assert.That(error.IsError, Is.True);
             Assert.That(error.Value, Is.EqualTo("foobar"));
             Assert.That(error.ToString(), Is.EqualTo(error.Value));
             var (kind, line) = error;
@@ -31,6 +35,8 @@ namespace Spawnr.Tests
         {
             var error = OutputLine.Output("foobar");
             Assert.That(error.Kind, Is.EqualTo(StandardOutputKind.Output));
+            Assert.That(error.IsOutput, Is.True);
+            Assert.That(error.IsError, Is.False);
             Assert.That(error.Value, Is.EqualTo("foobar"));
             Assert.That(error.ToString(), Is.EqualTo(error.Value));
             var (kind, line) = error;

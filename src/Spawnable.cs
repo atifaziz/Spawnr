@@ -139,8 +139,7 @@ namespace Spawnr
                                 (options, observer) =>
                                     spawner.Spawn(path, options.WithSuppressOutput(stdout is null)
                                                                .WithSuppressError(stderr is null))
-                                           .Select(e => e.Kind == StandardOutputKind.Output ? stdout!(e.Value)
-                                                                                            : stderr!(e.Value))
+                                           .Select(e => e.IsOutput ? stdout!(e.Value) : stderr!(e.Value))
                                            .Subscribe(observer));
 
         public static ISpawnable<string>

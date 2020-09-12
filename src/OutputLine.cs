@@ -30,6 +30,9 @@ namespace Spawnr
         public static OutputLine Error(string line) =>
             new OutputLine(StandardOutputKind.Error, line);
 
+        public bool IsOutput => Kind == StandardOutputKind.Output;
+        public bool IsError  => Kind == StandardOutputKind.Error;
+
         public StandardOutputKind Kind { get; }
         public string Value { get; }
 
@@ -47,7 +50,7 @@ namespace Spawnr
         public T Match<T>(Func<string, T> output, Func<string, T> error)
             => output is null ? throw new ArgumentNullException(nameof(output))
              : error is null ? throw new ArgumentNullException(nameof(error))
-             : Kind == StandardOutputKind.Output ? output(Value) : error(Value);
+             : IsOutput ? output(Value) : error(Value);
 
         string GetDebuggerDisplay() => $"{Kind}: {Value}";
     }
