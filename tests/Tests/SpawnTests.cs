@@ -6,7 +6,7 @@ namespace Spawnr.Tests
     using System.Linq;
     using System.Reactive;
     using NUnit.Framework;
-    using static SpawnModule;
+    using static Spawnable;
 
     public partial class SpawnTests
     {
@@ -360,7 +360,7 @@ namespace Spawnr.Tests
     using NUnit.Framework;
     using NUnit.Framework.Constraints;
     using static MoreLinq.Extensions.PartitionExtension;
-    using static SpawnModule;
+    using static Spawnable;
 
     partial class SpawnTests
     {
@@ -395,12 +395,17 @@ namespace Spawnr.Tests
 
             static ISpawnable<string>
                 TestAppOutput(IObservable<string>? stdin = null) =>
-                Spawn("dotnet", ProgramArguments.Var(_testAppPath!), stdin);
+                stdin is {}
+                ? Spawn("dotnet", ProgramArguments.Var(_testAppPath!),
+                        from s in stdin select OutputLine.Output(s))
+                : Spawn("dotnet", ProgramArguments.Var(_testAppPath!));
 
             static ISpawnable<string>
                 TestAppError(IObservable<string>? stdin = null) =>
                 Spawn("dotnet", ProgramArguments.Var(_testAppPath!),
-                      stdin, stdout: null, stderr: s => s);
+                      stdin is {} ? from s in stdin select OutputLine.Output(s)
+                                  : null,
+                      stdout: null, stderr: s => s);
 
             [Test]
             public void Nop()

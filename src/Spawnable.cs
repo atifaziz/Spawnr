@@ -25,34 +25,49 @@ namespace Spawnr
                                                  IEnumerable<T>
     {
         SpawnOptions Options { get; }
-        ISpawnable<T> WithOptions(SpawnOptions options);
+        ISpawner Spawner { get; }
+
+        ISpawnable<T> WithOptions(SpawnOptions value);
+        ISpawnable<T> WithSpawner(ISpawner value);
     }
 
     public static partial class Spawnable
     {
         internal static ISpawnable<T>
-            Create<T>(SpawnOptions options,
-                      Func<SpawnOptions, IObserver<T>, IDisposable> subscriber) =>
-            new Implementation<T>(options, subscriber);
+            Create<T>(SpawnOptions options, ISpawner spawner,
+                      Func<ISpawnable<T>, IObserver<T>, IDisposable> subscriber) =>
+            new Implementation<T>(options, spawner, subscriber);
 
         sealed partial class Implementation<T> : ISpawnable<T>
         {
-            readonly Func<SpawnOptions, IObserver<T>, IDisposable> _subscriber;
+            readonly Func<ISpawnable<T>, IObserver<T>, IDisposable> _subscriber;
 
-            public Implementation(SpawnOptions options,
-                                  Func<SpawnOptions, IObserver<T>, IDisposable> subscriber)
+            public Implementation(SpawnOptions options, ISpawner spawner,
+                                  Func<ISpawnable<T>, IObserver<T>, IDisposable> subscriber)
             {
                 Options = options ?? throw new ArgumentNullException(nameof(options));
+                Spawner = spawner ?? throw new ArgumentNullException(nameof(spawner));
                 _subscriber = subscriber ?? throw new ArgumentNullException(nameof(subscriber));
             }
 
-            public SpawnOptions Options { get; }
+            Implementation(Implementation<T> other) :
+                this(other.Options, other.Spawner, other._subscriber) {}
 
-            public ISpawnable<T> WithOptions(SpawnOptions value) =>
-                ReferenceEquals(Options, value) ? this : Create(value, _subscriber);
+            public ISpawner Spawner { get; private set; }
+            public SpawnOptions Options { get; private set; }
+
+            public ISpawnable<T> WithOptions(SpawnOptions value)
+                => value is null ? throw new ArgumentNullException(nameof(value))
+                 : value == Options ? this
+                 : new Implementation<T>(this) { Options = value };
+
+            public ISpawnable<T> WithSpawner(ISpawner value)
+                => value is null ? throw new ArgumentNullException(nameof(value))
+                 : value == Spawner ? this
+                 : new Implementation<T>(this) { Spawner = value };
 
             public IDisposable Subscribe(IObserver<T> observer) =>
-                _subscriber(Options, observer);
+                _subscriber(this, observer);
 
             public IEnumerator<T> GetEnumerator() =>
                 this.ToEnumerable().GetEnumerator();
@@ -110,41 +125,46 @@ namespace Spawnr
                               : spawnable;
 
         public static ISpawnable<KeyValuePair<T, string>>
-            Spawn<T>(this ISpawner spawner,
-                     string path, ProgramArguments args, T stdout, T stderr) =>
-            spawner.Spawn(path, args, null, stdout, stderr);
+            Spawn<T>(string path, ProgramArguments args, T stdout, T stderr) =>
+            Spawn(path, args, null, stdout, stderr);
 
         public static ISpawnable<KeyValuePair<T, string>>
-            Spawn<T>(this ISpawner spawner,
-                     string path, ProgramArguments args,
+            Spawn<T>(string path, ProgramArguments args,
                      IObservable<OutputLine>? stdin, T stdout, T stderr) =>
-            spawner.Spawn(path, args, stdin,
-                          line => KeyValuePair.Create(stdout, line),
-                          line => KeyValuePair.Create(stderr, line));
+            Spawn(path, args, stdin,
+                  line => KeyValuePair.Create(stdout, line),
+                  line => KeyValuePair.Create(stderr, line));
 
         public static ISpawnable<T>
-            Spawn<T>(this ISpawner spawner, string path, ProgramArguments args,
+            Spawn<T>(string path, ProgramArguments args,
                      Func<string, T>? stdout,
                      Func<string, T>? stderr) =>
-            spawner.Spawn(path, args, null, stdout, stderr);
+            Spawn(path, args, null, stdout, stderr);
 
         public static ISpawnable<T>
-            Spawn<T>(this ISpawner spawner, string path, ProgramArguments args,
+            Spawn<T>(string path, ProgramArguments args,
                      IObservable<OutputLine>? stdin,
                      Func<string, T>? stdout,
                      Func<string, T>? stderr) =>
-            Spawnable.Create<T>(SpawnOptions.Create()
-                                            .WithArguments(args)
-                                            .WithInput(stdin),
-                                (options, observer) =>
-                                    spawner.Spawn(path, options.WithSuppressOutput(stdout is null)
-                                                               .WithSuppressError(stderr is null))
-                                           .Select(e => e.IsOutput ? stdout!(e.Value) : stderr!(e.Value))
-                                           .Subscribe(observer));
+            Spawnable.Create<T>(
+                SpawnOptions.Create()
+                            .WithArguments(args)
+                            .WithInput(stdin),
+                Spawner.Default,
+                (spawnable, observer) =>
+                    spawnable.Spawner.Spawn(path,
+                                            spawnable.Options.WithSuppressOutput(stdout is null)
+                                                             .WithSuppressError(stderr is null))
+                                     .Select(e => e.IsOutput ? stdout!(e.Value) : stderr!(e.Value))
+                                     .Subscribe(observer));
 
         public static ISpawnable<string>
-            Spawn(this ISpawner spawner, string path, ProgramArguments args) =>
-            spawner.Spawn(path, args, output => output, null);
+            Spawn(string path, ProgramArguments args, IObservable<OutputLine> stdin) =>
+            Spawn(path, args, stdin, output => output, null);
+
+        public static ISpawnable<string>
+            Spawn(string path, ProgramArguments args) =>
+            Spawn(path, args, output => output, null);
 
         public static ISpawnable<string>
             Pipe(this IObservable<string> first, ISpawnable<string> second) =>
