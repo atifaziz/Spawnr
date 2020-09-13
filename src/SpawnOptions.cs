@@ -46,8 +46,9 @@ namespace Spawnr
         public static SpawnOptions Create() =>
             new SpawnOptions(ProgramArguments.Empty,
                              System.Environment.CurrentDirectory,
-                             ImmutableArray.CreateRange(from DictionaryEntry e in System.Environment.GetEnvironmentVariables()
-                                                        select KeyValuePair.Create((string)e.Key, (string)e.Value)),
+                             ImmutableArray.CreateRange(
+                                 from DictionaryEntry e in System.Environment.GetEnvironmentVariables()
+                                 select KeyValuePair.Create((string)e.Key, (string)e.Value)),
                              input: null, suppressOutput: false, suppressError: false,
                              exitCodeErrorFunction: null,
                              psi => new Process(new SysProcess { StartInfo = psi }),

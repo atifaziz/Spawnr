@@ -26,9 +26,9 @@ namespace Spawnr
     public partial interface ISpawnable<out T> : IObservable<T>,
                                                  IEnumerable<T>
     {
-        string ProgramPath { get; }
-        SpawnOptions Options { get; }
-        ISpawner Spawner { get; }
+        string       ProgramPath { get; }
+        SpawnOptions Options     { get; }
+        ISpawner     Spawner     { get; }
 
         ISpawnable<T> WithProgramPath(string value);
         ISpawnable<T> WithOptions(SpawnOptions value);
@@ -41,11 +41,11 @@ namespace Spawnr
         readonly Func<ISpawnable<T>, IObserver<T>, IDisposable> _subscriber;
 
         public Spawnable(string path, SpawnOptions options, ISpawner spawner,
-                                Func<ISpawnable<T>, IObserver<T>, IDisposable> subscriber)
+                         Func<ISpawnable<T>, IObserver<T>, IDisposable> subscriber)
         {
             ProgramPath = path ?? throw new ArgumentNullException(nameof(path));
-            Options = options ?? throw new ArgumentNullException(nameof(options));
-            Spawner = spawner ?? throw new ArgumentNullException(nameof(spawner));
+            Options     = options ?? throw new ArgumentNullException(nameof(options));
+            Spawner     = spawner ?? throw new ArgumentNullException(nameof(spawner));
             _subscriber = subscriber ?? throw new ArgumentNullException(nameof(subscriber));
         }
 
@@ -58,18 +58,18 @@ namespace Spawnr
 
         public ISpawnable<T> WithProgramPath(string value)
             => value is null ? throw new ArgumentNullException(nameof(value))
-                : value == ProgramPath ? this
-                : new Spawnable<T>(this) { ProgramPath = value };
+             : value == ProgramPath ? this
+             : new Spawnable<T>(this) { ProgramPath = value };
 
         public ISpawnable<T> WithOptions(SpawnOptions value)
             => value is null ? throw new ArgumentNullException(nameof(value))
-                : value == Options ? this
-                : new Spawnable<T>(this) { Options = value };
+             : value == Options ? this
+             : new Spawnable<T>(this) { Options = value };
 
         public ISpawnable<T> WithSpawner(ISpawner value)
             => value is null ? throw new ArgumentNullException(nameof(value))
-                : value == Spawner ? this
-                : new Spawnable<T>(this) { Spawner = value };
+             : value == Spawner ? this
+             : new Spawnable<T>(this) { Spawner = value };
 
         public IDisposable Subscribe(IObserver<T> observer) =>
             _subscriber(this, observer);

@@ -102,9 +102,11 @@ namespace Spawnr
             IDisposable? inputSubscription = null;
 
             if (options.CaptureOutput)
-                process.OutputDataReceived += CreateDataEventHandler(ControlFlags.OutputReceived, OutputLine.Output);
+                process.OutputDataReceived += CreateDataEventHandler(ControlFlags.OutputReceived,
+                                                                     OutputLine.Output);
             if (options.CaptureError)
-                process.ErrorDataReceived += CreateDataEventHandler(ControlFlags.ErrorReceived, OutputLine.Error);
+                process.ErrorDataReceived += CreateDataEventHandler(ControlFlags.ErrorReceived,
+                                                                    OutputLine.Error);
 
             process.Exited += delegate { OnExited(control); };
 
