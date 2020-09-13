@@ -397,14 +397,13 @@ namespace Spawnr.Tests
                 TestAppOutput(IObservable<string>? stdin = null) =>
                 stdin is {}
                 ? Spawn("dotnet", ProgramArguments.Var(_testAppPath!),
-                        from s in stdin select OutputLine.Output(s))
+                        stdin.AsOutput())
                 : Spawn("dotnet", ProgramArguments.Var(_testAppPath!));
 
             static ISpawnable<string>
                 TestAppError(IObservable<string>? stdin = null) =>
                 Spawn("dotnet", ProgramArguments.Var(_testAppPath!),
-                      stdin is {} ? from s in stdin select OutputLine.Output(s)
-                                  : null,
+                      stdin is {} ? stdin.AsOutput() : null,
                       stdout: null, stderr: s => s);
 
             [Test]

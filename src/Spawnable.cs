@@ -122,10 +122,7 @@ namespace Spawnr
 
         public static ISpawnable<T> Input<T>(this ISpawnable<T> spawnable,
                                              IObservable<string>? value) =>
-            spawnable.Input(value is {} stdin
-                            ? from line in stdin
-                              select OutputLine.Output(line)
-                            : null);
+            spawnable.Input(value is {} strs ? strs.AsOutput() : null);
 
         public static IObservable<T> AsObservable<T>(this ISpawnable<T> spawnable) =>
             spawnable is null ? throw new ArgumentNullException(nameof(spawnable))
@@ -188,7 +185,7 @@ namespace Spawnr
 
         public static ISpawnable<OutputLine>
             Pipe(this IObservable<string> first, ISpawnable<OutputLine> second) =>
-            second.Input(from line in first select OutputLine.Output(line));
+            second.Input(first.AsOutput());
     }
 }
 
