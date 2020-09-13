@@ -35,62 +35,57 @@ namespace Spawnr
         ISpawnable<T> WithSpawner(ISpawner value);
     }
 
-    public static partial class Spawnable
+    [DebuggerDisplay("{" + nameof(GetDebuggerDisplay) + "(),nq}")]
+    sealed partial class Spawnable<T> : ISpawnable<T>
     {
-        internal static ISpawnable<T>
-            Create<T>(string path, SpawnOptions options, ISpawner spawner,
-                      Func<ISpawnable<T>, IObserver<T>, IDisposable> subscriber) =>
-            new Implementation<T>(path, options, spawner, subscriber);
+        readonly Func<ISpawnable<T>, IObserver<T>, IDisposable> _subscriber;
 
-        [DebuggerDisplay("{" + nameof(GetDebuggerDisplay) + "(),nq}")]
-        sealed partial class Implementation<T> : ISpawnable<T>
+        public Spawnable(string path, SpawnOptions options, ISpawner spawner,
+                                Func<ISpawnable<T>, IObserver<T>, IDisposable> subscriber)
         {
-            readonly Func<ISpawnable<T>, IObserver<T>, IDisposable> _subscriber;
-
-            public Implementation(string path, SpawnOptions options, ISpawner spawner,
-                                  Func<ISpawnable<T>, IObserver<T>, IDisposable> subscriber)
-            {
-                ProgramPath = path ?? throw new ArgumentNullException(nameof(path));
-                Options = options ?? throw new ArgumentNullException(nameof(options));
-                Spawner = spawner ?? throw new ArgumentNullException(nameof(spawner));
-                _subscriber = subscriber ?? throw new ArgumentNullException(nameof(subscriber));
-            }
-
-            Implementation(Implementation<T> other) :
-                this(other.ProgramPath, other.Options, other.Spawner, other._subscriber) {}
-
-            public string ProgramPath { get; private set; }
-            public ISpawner Spawner { get; private set; }
-            public SpawnOptions Options { get; private set; }
-
-            public ISpawnable<T> WithProgramPath(string value)
-                => value is null ? throw new ArgumentNullException(nameof(value))
-                 : value == ProgramPath ? this
-                 : new Implementation<T>(this) { ProgramPath = value };
-
-            public ISpawnable<T> WithOptions(SpawnOptions value)
-                => value is null ? throw new ArgumentNullException(nameof(value))
-                 : value == Options ? this
-                 : new Implementation<T>(this) { Options = value };
-
-            public ISpawnable<T> WithSpawner(ISpawner value)
-                => value is null ? throw new ArgumentNullException(nameof(value))
-                 : value == Spawner ? this
-                 : new Implementation<T>(this) { Spawner = value };
-
-            public IDisposable Subscribe(IObserver<T> observer) =>
-                _subscriber(this, observer);
-
-            public IEnumerator<T> GetEnumerator() =>
-                this.ToEnumerable().GetEnumerator();
-
-            IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-            string GetDebuggerDisplay() =>
-                ProgramArguments.From(new[] { ProgramPath }.Concat(Options.Arguments))
-                                .ToString();
+            ProgramPath = path ?? throw new ArgumentNullException(nameof(path));
+            Options = options ?? throw new ArgumentNullException(nameof(options));
+            Spawner = spawner ?? throw new ArgumentNullException(nameof(spawner));
+            _subscriber = subscriber ?? throw new ArgumentNullException(nameof(subscriber));
         }
 
+        Spawnable(Spawnable<T> other) :
+            this(other.ProgramPath, other.Options, other.Spawner, other._subscriber) {}
+
+        public string ProgramPath { get; private set; }
+        public ISpawner Spawner { get; private set; }
+        public SpawnOptions Options { get; private set; }
+
+        public ISpawnable<T> WithProgramPath(string value)
+            => value is null ? throw new ArgumentNullException(nameof(value))
+                : value == ProgramPath ? this
+                : new Spawnable<T>(this) { ProgramPath = value };
+
+        public ISpawnable<T> WithOptions(SpawnOptions value)
+            => value is null ? throw new ArgumentNullException(nameof(value))
+                : value == Options ? this
+                : new Spawnable<T>(this) { Options = value };
+
+        public ISpawnable<T> WithSpawner(ISpawner value)
+            => value is null ? throw new ArgumentNullException(nameof(value))
+                : value == Spawner ? this
+                : new Spawnable<T>(this) { Spawner = value };
+
+        public IDisposable Subscribe(IObserver<T> observer) =>
+            _subscriber(this, observer);
+
+        public IEnumerator<T> GetEnumerator() =>
+            this.ToEnumerable().GetEnumerator();
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+        string GetDebuggerDisplay() =>
+            ProgramArguments.From(new[] { ProgramPath }.Concat(Options.Arguments))
+                            .ToString();
+    }
+
+    public static partial class Spawnable
+    {
         public static ISpawnable<T> AddArgument<T>(this ISpawnable<T> source, string value) =>
             source.WithOptions(source.Options.AddArgument(value));
 
@@ -162,7 +157,7 @@ namespace Spawnr
                      IObservable<OutputLine>? stdin,
                      Func<string, T>? stdout,
                      Func<string, T>? stderr) =>
-            Spawnable.Create<T>(
+            new Spawnable<T>(
                 path,
                 SpawnOptions.Create()
                             .WithArguments(args)
@@ -214,37 +209,37 @@ namespace Spawnr
         public static IAsyncEnumerable<T> AsAsyncEnumerable<T>(this ISpawnable<T> spawnable) =>
             spawnable is null ? throw new ArgumentNullException(nameof(spawnable))
                               : spawnable;
+    }
 
-        partial class Implementation<T>
+    partial class Spawnable<T>
+    {
+        public async IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
         {
-            public async IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
+            var completed = false;
+            var error = (Exception?)null;
+            var queue = new ConcurrentQueue<T>();
+            var semaphore = new SemaphoreSlim(initialCount: 0);
+
+            using var subscription =
+                this.Subscribe(
+                    item => { queue.Enqueue(item); semaphore.Release(); },
+                    err  => { error = err        ; semaphore.Release(); },
+                    ()   => { completed = true   ; semaphore.Release(); });
+
+            while (true)
             {
-                var completed = false;
-                var error = (Exception?)null;
-                var queue = new ConcurrentQueue<T>();
-                var semaphore = new SemaphoreSlim(initialCount: 0);
+                await semaphore.WaitAsync(cancellationToken)
+                                .ConfigureAwait(false);
 
-                using var subscription =
-                    this.Subscribe(
-                        item => { queue.Enqueue(item); semaphore.Release(); },
-                        err  => { error = err        ; semaphore.Release(); },
-                        ()   => { completed = true   ; semaphore.Release(); });
+                if (completed)
+                    break;
 
-                while (true)
-                {
-                    await semaphore.WaitAsync(cancellationToken)
-                                   .ConfigureAwait(false);
+                if (error is {} err)
+                    throw err;
 
-                    if (completed)
-                        break;
-
-                    if (error is {} err)
-                        throw err;
-
-                    var succeeded = queue.TryDequeue(out var item);
-                    Debug.Assert(succeeded);
-                    yield return item;
-                }
+                var succeeded = queue.TryDequeue(out var item);
+                Debug.Assert(succeeded);
+                yield return item;
             }
         }
     }
