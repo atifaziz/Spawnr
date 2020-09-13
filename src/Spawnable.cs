@@ -19,14 +19,18 @@ namespace Spawnr
     using System;
     using System.Collections;
     using System.Collections.Generic;
+    using System.Diagnostics;
+    using System.Linq;
     using System.Reactive.Linq;
 
     public partial interface ISpawnable<out T> : IObservable<T>,
                                                  IEnumerable<T>
     {
+        string ProgramPath { get; }
         SpawnOptions Options { get; }
         ISpawner Spawner { get; }
 
+        ISpawnable<T> WithProgramPath(string value);
         ISpawnable<T> WithOptions(SpawnOptions value);
         ISpawnable<T> WithSpawner(ISpawner value);
     }
@@ -34,27 +38,35 @@ namespace Spawnr
     public static partial class Spawnable
     {
         internal static ISpawnable<T>
-            Create<T>(SpawnOptions options, ISpawner spawner,
+            Create<T>(string path, SpawnOptions options, ISpawner spawner,
                       Func<ISpawnable<T>, IObserver<T>, IDisposable> subscriber) =>
-            new Implementation<T>(options, spawner, subscriber);
+            new Implementation<T>(path, options, spawner, subscriber);
 
+        [DebuggerDisplay("{" + nameof(GetDebuggerDisplay) + "(),nq}")]
         sealed partial class Implementation<T> : ISpawnable<T>
         {
             readonly Func<ISpawnable<T>, IObserver<T>, IDisposable> _subscriber;
 
-            public Implementation(SpawnOptions options, ISpawner spawner,
+            public Implementation(string path, SpawnOptions options, ISpawner spawner,
                                   Func<ISpawnable<T>, IObserver<T>, IDisposable> subscriber)
             {
+                ProgramPath = path ?? throw new ArgumentNullException(nameof(path));
                 Options = options ?? throw new ArgumentNullException(nameof(options));
                 Spawner = spawner ?? throw new ArgumentNullException(nameof(spawner));
                 _subscriber = subscriber ?? throw new ArgumentNullException(nameof(subscriber));
             }
 
             Implementation(Implementation<T> other) :
-                this(other.Options, other.Spawner, other._subscriber) {}
+                this(other.ProgramPath, other.Options, other.Spawner, other._subscriber) {}
 
+            public string ProgramPath { get; private set; }
             public ISpawner Spawner { get; private set; }
             public SpawnOptions Options { get; private set; }
+
+            public ISpawnable<T> WithProgramPath(string value)
+                => value is null ? throw new ArgumentNullException(nameof(value))
+                 : value == ProgramPath ? this
+                 : new Implementation<T>(this) { ProgramPath = value };
 
             public ISpawnable<T> WithOptions(SpawnOptions value)
                 => value is null ? throw new ArgumentNullException(nameof(value))
@@ -73,6 +85,10 @@ namespace Spawnr
                 this.ToEnumerable().GetEnumerator();
 
             IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+            string GetDebuggerDisplay() =>
+                ProgramArguments.From(new[] { ProgramPath }.Concat(Options.Arguments))
+                                .ToString();
         }
 
         public static ISpawnable<T> AddArgument<T>(this ISpawnable<T> source, string value) =>
@@ -147,12 +163,13 @@ namespace Spawnr
                      Func<string, T>? stdout,
                      Func<string, T>? stderr) =>
             Spawnable.Create<T>(
+                path,
                 SpawnOptions.Create()
                             .WithArguments(args)
                             .WithInput(stdin),
                 Spawner.Default,
                 (spawnable, observer) =>
-                    spawnable.Spawner.Spawn(path,
+                    spawnable.Spawner.Spawn(spawnable.ProgramPath,
                                             spawnable.Options.WithSuppressOutput(stdout is null)
                                                              .WithSuppressError(stderr is null))
                                      .Select(e => e.IsOutput ? stdout!(e.Value) : stderr!(e.Value))
