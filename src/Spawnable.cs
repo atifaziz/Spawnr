@@ -124,6 +124,33 @@ namespace Spawnr
                                              IObservable<string>? value) =>
             spawnable.Input(value is {} strs ? strs.AsOutput() : null);
 
+        public static ISpawnable<string> FilterOutput(this ISpawnable<OutputLine> source) =>
+            source.Filter(StandardOutputKind.Output);
+
+        public static ISpawnable<string> FilterError(this ISpawnable<OutputLine> source) =>
+            source.Filter(StandardOutputKind.Error);
+
+        static ISpawnable<string> Filter(this ISpawnable<OutputLine> source,
+                                         StandardOutputKind kind) =>
+            from e in
+                source.WithOptions(source.Options.WithSuppressError(kind != StandardOutputKind.Error)
+                                                 .WithSuppressOutput(kind != StandardOutputKind.Output))
+            select e.Value;
+
+        static ISpawnable<TResult>
+            Select<T, TResult>(this ISpawnable<T> source, Func<T, TResult> selector) =>
+            new Spawnable<TResult>(
+                source.ProgramPath,
+                source.Options,
+                source.Spawner,
+                (spawnable, observer) =>
+                    source.WithProgramPath(spawnable.ProgramPath)
+                          .WithOptions(spawnable.Options)
+                          .WithSpawner(spawnable.Spawner)
+                          .AsObservable()
+                          .Select(selector)
+                          .Subscribe(observer));
+
         public static IObservable<T> AsObservable<T>(this ISpawnable<T> spawnable) =>
             spawnable is null ? throw new ArgumentNullException(nameof(spawnable))
                               : spawnable;
@@ -167,13 +194,13 @@ namespace Spawnr
                                      .Select(e => e.IsOutput ? stdout!(e.Value) : stderr!(e.Value))
                                      .Subscribe(observer));
 
-        public static ISpawnable<string>
+        public static ISpawnable<OutputLine>
             Spawn(string path, ProgramArguments args, IObservable<OutputLine> stdin) =>
-            Spawn(path, args, stdin, output => output, null);
+            Spawn(path, args, stdin, OutputLine.Output, OutputLine.Error);
 
-        public static ISpawnable<string>
+        public static ISpawnable<OutputLine>
             Spawn(string path, ProgramArguments args) =>
-            Spawn(path, args, output => output, null);
+            Spawn(path, args, OutputLine.Output, OutputLine.Error);
 
         public static ISpawnable<string>
             Pipe(this IObservable<string> first, ISpawnable<string> second) =>

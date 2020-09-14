@@ -389,22 +389,19 @@ namespace Spawnr.Tests
 
             static ISpawnable<OutputLine>
                 TestAppStreams() =>
-                Spawn("dotnet", ProgramArguments.Var(_testAppPath!),
-                      null, s => OutputLine.Output(s),
-                            s => OutputLine.Error(s));
+                Spawn("dotnet", ProgramArguments.Var(_testAppPath!));
 
             static ISpawnable<string>
                 TestAppOutput(IObservable<string>? stdin = null) =>
-                stdin is {}
-                ? Spawn("dotnet", ProgramArguments.Var(_testAppPath!),
-                        stdin.AsOutput())
-                : Spawn("dotnet", ProgramArguments.Var(_testAppPath!));
+                TestAppStreams()
+                    .Input(stdin?.AsOutput())
+                    .FilterOutput();
 
             static ISpawnable<string>
                 TestAppError(IObservable<string>? stdin = null) =>
-                Spawn("dotnet", ProgramArguments.Var(_testAppPath!),
-                      stdin is {} ? stdin.AsOutput() : null,
-                      stdout: null, stderr: s => s);
+                TestAppStreams()
+                    .Input(stdin?.AsOutput())
+                    .FilterError();
 
             [Test]
             public void Nop()
