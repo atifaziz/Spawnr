@@ -147,26 +147,10 @@ namespace Spawnr
             spawnable.Input(value is {} strs ? strs.AsOutput() : null);
 
         public static ISpawnable<string> FilterOutput(this ISpawnable<OutputLine> source) =>
-            source.Filter(StandardOutputKind.Output);
+            source.Output(stdout: s => s, stderr: null);
 
         public static ISpawnable<string> FilterError(this ISpawnable<OutputLine> source) =>
-            source.Filter(StandardOutputKind.Error);
-
-        static ISpawnable<string> Filter(this ISpawnable<OutputLine> source,
-                                         StandardOutputKind kind) =>
-            from e in
-                source.WithOptions(source.Options.WithSuppressError(kind != StandardOutputKind.Error)
-                                                 .WithSuppressOutput(kind != StandardOutputKind.Output))
-            select e.Value;
-
-        static ISpawnable<TResult>
-            Select<T, TResult>(this ISpawnable<T> source, Func<T, TResult> selector) =>
-            new Spawnable<TResult>(source,
-                                   (spawnable, observer) =>
-                                       source.Update(spawnable)
-                                             .AsObservable()
-                                             .Select(selector)
-                                             .Subscribe(observer));
+            source.Output(stdout: null, stderr: s => s);
 
         public static IObservable<T> AsObservable<T>(this ISpawnable<T> spawnable) =>
             spawnable is null ? throw new ArgumentNullException(nameof(spawnable))
@@ -204,6 +188,18 @@ namespace Spawnr
                             .WithArguments(args)
                             .WithInput(stdin),
                 Spawner.Default,
+                (spawnable, observer) =>
+                    spawnable.Spawner.Spawn(spawnable.ProgramPath,
+                                            spawnable.Options.WithSuppressOutput(stdout is null)
+                                                             .WithSuppressError(stderr is null))
+                                     .Select(e => e.IsOutput ? stdout!(e.Value) : stderr!(e.Value))
+                                     .Subscribe(observer));
+
+        public static ISpawnable<T>
+            Output<T>(this ISpawnable spawnable, Func<string, T>? stdout,
+                                                 Func<string, T>? stderr) =>
+            new Spawnable<T>(
+                spawnable,
                 (spawnable, observer) =>
                     spawnable.Spawner.Spawn(spawnable.ProgramPath,
                                             spawnable.Options.WithSuppressOutput(stdout is null)
