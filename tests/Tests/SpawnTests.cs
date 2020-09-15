@@ -311,10 +311,10 @@ namespace Spawnr.Tests
 
         static TaggedDisposable<TestProcess>
             TestSpawn<T>(SpawnOptions options,
-                     ICollection<Notification<T>> notifications,
-                     Func<string, T>? stdoutSelector,
-                     Func<string, T>? stderrSelector,
-                     params Action<TestProcess>[] processModifiers)
+                         ICollection<Notification<T>> notifications,
+                         Func<string, T>? stdoutSelector,
+                         Func<string, T>? stderrSelector,
+                         params Action<TestProcess>[] processModifiers)
         {
             var observer =
                 Observer.Create((T data) => notifications.Add(Notification.CreateOnNext(data)),
@@ -338,7 +338,7 @@ namespace Spawnr.Tests
                             TryKillException = null,
                         };
                         foreach (var modifier in processModifiers)
-                           modifier(process);
+                            modifier(process);
                         return process;
                     }))
                     .Subscribe(observer);
