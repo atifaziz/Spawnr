@@ -22,8 +22,10 @@ namespace Spawnr
     using System.Diagnostics;
     using System.Linq;
     using System.Reactive.Linq;
+    using System.Threading;
+    using System.Threading.Tasks;
 
-    public partial interface ISpawnable : IEnumerable
+    public partial interface ISpawnable
     {
         string       ProgramPath { get; }
         SpawnOptions Options     { get; }
@@ -215,6 +217,55 @@ namespace Spawnr
                      Func<string, T>? stderr) =>
             Spawn(path, args, null, stdout, stderr);
 
+        public static async Task<int> Async(this ISpawnable spawnable,
+                                            CancellationToken cancellationToken = default)
+        {
+            var tcs = new TaskCompletionSource<int>();
+
+            using var subscription =
+                spawnable.Spawner.Spawn(spawnable.ProgramPath,
+                                        spawnable.Options.WithSuppressOutput(true)
+                                                         .WithSuppressError(true))
+                                 .Subscribe(
+                                     onNext: delegate {},
+                                     onError: e =>
+                                     {
+                                         if (e is ExternalProcessException epe)
+                                             tcs.TrySetResult(epe.ExitCode);
+                                         else
+                                             tcs.TrySetException(e);
+                                     },
+                                     onCompleted: () => tcs.TrySetResult(0));
+
+            using var registration
+                = cancellationToken.CanBeCanceled
+                ? cancellationToken.Register(
+                      useSynchronizationContext: false,
+                      callback: () =>
+                      {
+                          tcs.TrySetException(new TaskCanceledException(tcs.Task));
+                          subscription.Dispose();
+                      })
+                : default;
+
+            await tcs.Task.ConfigureAwait(false);
+            return tcs.Task.Result;
+        }
+
+        public static ISpawnable Spawn(string path, ProgramArguments args) =>
+            new Spawnable<OutputLine>(
+                path,
+                SpawnOptions.Create().WithArguments(args),
+                Spawner.Default,
+                (spawnable, observer) =>
+                    spawnable.Spawner.Spawn(spawnable.ProgramPath,
+                                            spawnable.Options.WithSuppressOutput(true)
+                                                             .WithSuppressError(true))
+                                     .Subscribe(observer));
+
+        public static ISpawnable<OutputLine> CaptureOutputs(this ISpawnable spawnable) =>
+            spawnable.Output(OutputLine.Output, OutputLine.Error);
+
         public static ISpawnable<T>
             Spawn<T>(string path, ProgramArguments args,
                      IObservable<OutputLine>? stdin,
@@ -248,10 +299,6 @@ namespace Spawnr
         public static ISpawnable<OutputLine>
             Spawn(string path, ProgramArguments args, IObservable<OutputLine> stdin) =>
             Spawn(path, args, stdin, OutputLine.Output, OutputLine.Error);
-
-        public static ISpawnable<OutputLine>
-            Spawn(string path, ProgramArguments args) =>
-            Spawn(path, args, OutputLine.Output, OutputLine.Error);
 
         public static ISpawnable<string>
             Pipe(this IObservable<string> first, ISpawnable<string> second) =>

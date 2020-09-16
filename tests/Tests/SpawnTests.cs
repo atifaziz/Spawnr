@@ -357,6 +357,8 @@ namespace Spawnr.Tests
     using System.Reactive.Linq;
     using System.Reflection;
     using System.Text.RegularExpressions;
+    using System.Threading;
+    using System.Threading.Tasks;
     using NUnit.Framework;
     using NUnit.Framework.Constraints;
     using static MoreLinq.Extensions.PartitionExtension;
@@ -387,18 +389,18 @@ namespace Spawnr.Tests
 
             enum Std { Out, Err }
 
-            static ISpawnable<OutputLine>
-                TestAppStreams() =>
+            static ISpawnable SpawnTestApp() =>
                 Spawn("dotnet", ProgramArguments.Var(_testAppPath!));
 
-            static ISpawnable<string>
-                TestAppOutput(IObservable<string>? stdin = null) =>
+            static ISpawnable<OutputLine> TestAppStreams() =>
+                SpawnTestApp().CaptureOutputs();
+
+            static ISpawnable<string> TestAppOutput(IObservable<string>? stdin = null) =>
                 TestAppStreams()
                     .Input(stdin?.AsOutput())
                     .FilterOutput();
 
-            static ISpawnable<string>
-                TestAppError(IObservable<string>? stdin = null) =>
+            static ISpawnable<string> TestAppError(IObservable<string>? stdin = null) =>
                 TestAppStreams()
                     .Input(stdin?.AsOutput())
                     .FilterError();
@@ -550,6 +552,30 @@ namespace Spawnr.Tests
                     "Nam nec gravida justo.",
                     "Cras sed semper elit.",
                 }));
+            }
+
+            [Test]
+            public async Task AsyncZeroExit()
+            {
+                var exitCode = await SpawnTestApp().AddArgument("nop").Async();
+                Assert.That(exitCode, Is.Zero);
+            }
+            [Test]
+
+            public async Task AsyncNonZeroExit()
+            {
+                var exitCode = await SpawnTestApp().AddArgument("exit", "42").Async();
+                Assert.That(exitCode, Is.EqualTo(42));
+            }
+
+            [Test]
+            public void AsyncCancellation()
+            {
+                var cts = new CancellationTokenSource();
+                cts.CancelAfter(TimeSpan.FromSeconds(0.5));
+                var e = Assert.ThrowsAsync<TaskCanceledException>(async () =>
+                    _ = await SpawnTestApp().AddArgument("sleep", "3").Async(cts.Token));
+                Assert.That(e.Task, Is.Not.Null);
             }
         }
     }

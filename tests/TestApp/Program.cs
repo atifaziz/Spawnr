@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Threading;
 
 static class Program
 {
@@ -78,6 +79,14 @@ static class Program
                          : 0;
                 Environment.Exit(code);
                 return code; // should never get here
+            }
+            case "sleep":
+            {
+                var duration = args.TryDequeue(out var arg)
+                             ? TimeSpan.FromSeconds(double.Parse(arg, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture))
+                             : throw new Exception("Missing seconds argument.");
+                Thread.Sleep(duration);
+                return 0;
             }
             default:
             {
