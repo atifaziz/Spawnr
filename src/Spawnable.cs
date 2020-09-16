@@ -108,6 +108,44 @@ namespace Spawnr
 
     public static partial class Spawnable
     {
+        public static ISpawnable AddArgument(this ISpawnable source, string value) =>
+            source.WithOptions(source.Options.AddArgument(value));
+
+        public static ISpawnable AddArgument(this ISpawnable source, params string[] values) =>
+            source.WithOptions(source.Options.AddArgument(values));
+
+        public static ISpawnable AddArguments<T>(this ISpawnable source, IEnumerable<string> values) =>
+            source.WithOptions(source.Options.AddArguments(values));
+
+        public static ISpawnable ClearArguments<T>(this ISpawnable source) =>
+            source.WithOptions(source.Options.ClearArguments());
+
+        public static ISpawnable SetCommandLine<T>(this ISpawnable source, string value) =>
+            source.WithOptions(source.Options.SetCommandLine(value));
+
+        public static ISpawnable ClearEnvironment<T>(this ISpawnable source) =>
+            source.WithOptions(source.Options.ClearEnvironment());
+
+        public static ISpawnable AddEnvironment<T>(this ISpawnable source, string name, string value) =>
+            source.WithOptions(source.Options.AddEnvironment(name, value));
+
+        public static ISpawnable SetEnvironment<T>(this ISpawnable source, string name, string value) =>
+            source.WithOptions(source.Options.SetEnvironment(name, value));
+
+        public static ISpawnable UnsetEnvironment<T>(this ISpawnable source, string name) =>
+            source.WithOptions(source.Options.UnsetEnvironment(name));
+
+        public static ISpawnable WorkingDirectory<T>(this ISpawnable source, string value) =>
+            source.WithOptions(source.Options.WithWorkingDirectory(value));
+
+        public static ISpawnable Input(this ISpawnable source,
+                                       IObservable<OutputLine>? value) =>
+            source.WithOptions(source.Options.WithInput(value));
+
+        public static ISpawnable Input<T>(this ISpawnable spawnable,
+                                          IObservable<string>? value) =>
+            spawnable.Input(value is {} strs ? strs.AsOutput() : null);
+
         public static ISpawnable<T> AddArgument<T>(this ISpawnable<T> source, string value) =>
             source.WithOptions(source.Options.AddArgument(value));
 
