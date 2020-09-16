@@ -110,6 +110,8 @@ namespace Spawnr
 
     public static partial class Spawnable
     {
+        // Non-generic ISpawnable extensions for updating options
+
         public static ISpawnable AddArgument(this ISpawnable source, string value) =>
             source.WithOptions(source.Options.AddArgument(value));
 
@@ -147,6 +149,8 @@ namespace Spawnr
         public static ISpawnable Input<T>(this ISpawnable spawnable,
                                           IObservable<string>? value) =>
             spawnable.Input(value is {} strs ? strs.AsOutput() : null);
+
+        // Generic ISpawnable extensions for updating options
 
         public static ISpawnable<T> AddArgument<T>(this ISpawnable<T> source, string value) =>
             source.WithOptions(source.Options.AddArgument(value));
@@ -186,11 +190,7 @@ namespace Spawnr
                                              IObservable<string>? value) =>
             spawnable.Input(value is {} strs ? strs.AsOutput() : null);
 
-        public static ISpawnable<string> FilterOutput(this ISpawnable<OutputLine> source) =>
-            source.Output(stdout: s => s, stderr: null);
-
-        public static ISpawnable<string> FilterError(this ISpawnable<OutputLine> source) =>
-            source.Output(stdout: null, stderr: s => s);
+        // Disambiguation extensions
 
         public static IObservable<T> AsObservable<T>(this ISpawnable<T> spawnable) =>
             spawnable is null ? throw new ArgumentNullException(nameof(spawnable))
@@ -200,6 +200,62 @@ namespace Spawnr
             spawnable is null ? throw new ArgumentNullException(nameof(spawnable))
                               : spawnable;
 
+        // Extensions related to capture outputs
+
+        public static ISpawnable<OutputLine> CaptureOutputs(this ISpawnable spawnable) =>
+            spawnable.CaptureOutputs(OutputLine.Output, OutputLine.Error);
+
+        public static ISpawnable<string> CaptureOutput(this ISpawnable spawnable) =>
+            spawnable.CaptureOutputs(stdout: s => s, stderr: null);
+
+        public static ISpawnable<string> CaptureError(this ISpawnable spawnable) =>
+            spawnable.CaptureOutputs(stdout: null, stderr: s => s);
+
+        public static ISpawnable<string> FilterOutput(this ISpawnable<OutputLine> source) =>
+            source.CaptureOutputs(stdout: s => s, stderr: null);
+
+        public static ISpawnable<string> FilterError(this ISpawnable<OutputLine> source) =>
+            source.CaptureOutputs(stdout: null, stderr: s => s);
+
+        public static ISpawnable<T>
+            CaptureOutputs<T>(this ISpawnable spawnable, Func<string, T>? stdout,
+                                                         Func<string, T>? stderr) =>
+            new Spawnable<T>(
+                spawnable,
+                (spawnable, observer) =>
+                    spawnable.Spawner.Spawn(spawnable.ProgramPath,
+                                            spawnable.Options.WithSuppressOutput(stdout is null)
+                                                             .WithSuppressError(stderr is null))
+                                     .Select(e => e.IsOutput ? stdout!(e.Value) : stderr!(e.Value))
+                                     .Subscribe(observer));
+
+        // Extensions to setup pipes of spawnables
+
+        public static ISpawnable<string>
+            Pipe(this IObservable<string> first, ISpawnable<string> second) =>
+            second.Input(first);
+
+        public static ISpawnable<OutputLine>
+            Pipe(this ISpawnable<OutputLine> first, ISpawnable<OutputLine> second) =>
+            second.Input(first);
+
+        public static ISpawnable<OutputLine>
+            Pipe(this IObservable<string> first, ISpawnable<OutputLine> second) =>
+            second.Input(first.AsOutput());
+
+        // Spawn methods
+
+        public static ISpawnable Spawn(string path, ProgramArguments args) =>
+            new Spawnable<OutputLine>(
+                path,
+                SpawnOptions.Create().WithArguments(args),
+                Spawner.Default,
+                (spawnable, observer) =>
+                    spawnable.Spawner.Spawn(spawnable.ProgramPath,
+                                            spawnable.Options.WithSuppressOutput(true)
+                                                             .WithSuppressError(true))
+                                     .Subscribe(observer));
+
         public static ISpawnable<KeyValuePair<T, string>>
             Spawn<T>(string path, ProgramArguments args, T stdout, T stderr) =>
             Spawn(path, args, null, stdout, stderr);
@@ -207,15 +263,23 @@ namespace Spawnr
         public static ISpawnable<KeyValuePair<T, string>>
             Spawn<T>(string path, ProgramArguments args,
                      IObservable<OutputLine>? stdin, T stdout, T stderr) =>
-            Spawn(path, args, stdin,
-                  line => KeyValuePair.Create(stdout, line),
-                  line => KeyValuePair.Create(stderr, line));
+            Spawn(path, args, stdin, line => KeyValuePair.Create(stdout, line),
+                                     line => KeyValuePair.Create(stderr, line));
 
         public static ISpawnable<T>
             Spawn<T>(string path, ProgramArguments args,
-                     Func<string, T>? stdout,
-                     Func<string, T>? stderr) =>
+                     Func<string, T>? stdout, Func<string, T>? stderr) =>
             Spawn(path, args, null, stdout, stderr);
+
+        public static ISpawnable<OutputLine>
+            Spawn(string path, ProgramArguments args, IObservable<OutputLine> stdin) =>
+            Spawn(path, args).Input(stdin).CaptureOutputs();
+
+        public static ISpawnable<T>
+            Spawn<T>(string path, ProgramArguments args,
+                     IObservable<OutputLine>? stdin,
+                     Func<string, T>? stdout, Func<string, T>? stderr) =>
+            Spawn(path, args).Input(stdin).CaptureOutputs(stdout, stderr);
 
         public static async Task<int> Async(this ISpawnable spawnable,
                                             CancellationToken cancellationToken = default)
@@ -251,66 +315,6 @@ namespace Spawnr
             await tcs.Task.ConfigureAwait(false);
             return tcs.Task.Result;
         }
-
-        public static ISpawnable Spawn(string path, ProgramArguments args) =>
-            new Spawnable<OutputLine>(
-                path,
-                SpawnOptions.Create().WithArguments(args),
-                Spawner.Default,
-                (spawnable, observer) =>
-                    spawnable.Spawner.Spawn(spawnable.ProgramPath,
-                                            spawnable.Options.WithSuppressOutput(true)
-                                                             .WithSuppressError(true))
-                                     .Subscribe(observer));
-
-        public static ISpawnable<OutputLine> CaptureOutputs(this ISpawnable spawnable) =>
-            spawnable.Output(OutputLine.Output, OutputLine.Error);
-
-        public static ISpawnable<T>
-            Spawn<T>(string path, ProgramArguments args,
-                     IObservable<OutputLine>? stdin,
-                     Func<string, T>? stdout,
-                     Func<string, T>? stderr) =>
-            new Spawnable<T>(
-                path,
-                SpawnOptions.Create()
-                            .WithArguments(args)
-                            .WithInput(stdin),
-                Spawner.Default,
-                (spawnable, observer) =>
-                    spawnable.Spawner.Spawn(spawnable.ProgramPath,
-                                            spawnable.Options.WithSuppressOutput(stdout is null)
-                                                             .WithSuppressError(stderr is null))
-                                     .Select(e => e.IsOutput ? stdout!(e.Value) : stderr!(e.Value))
-                                     .Subscribe(observer));
-
-        public static ISpawnable<T>
-            Output<T>(this ISpawnable spawnable, Func<string, T>? stdout,
-                                                 Func<string, T>? stderr) =>
-            new Spawnable<T>(
-                spawnable,
-                (spawnable, observer) =>
-                    spawnable.Spawner.Spawn(spawnable.ProgramPath,
-                                            spawnable.Options.WithSuppressOutput(stdout is null)
-                                                             .WithSuppressError(stderr is null))
-                                     .Select(e => e.IsOutput ? stdout!(e.Value) : stderr!(e.Value))
-                                     .Subscribe(observer));
-
-        public static ISpawnable<OutputLine>
-            Spawn(string path, ProgramArguments args, IObservable<OutputLine> stdin) =>
-            Spawn(path, args, stdin, OutputLine.Output, OutputLine.Error);
-
-        public static ISpawnable<string>
-            Pipe(this IObservable<string> first, ISpawnable<string> second) =>
-            second.Input(first);
-
-        public static ISpawnable<OutputLine>
-            Pipe(this ISpawnable<OutputLine> first, ISpawnable<OutputLine> second) =>
-            second.Input(first);
-
-        public static ISpawnable<OutputLine>
-            Pipe(this IObservable<string> first, ISpawnable<OutputLine> second) =>
-            second.Input(first.AsOutput());
     }
 }
 
