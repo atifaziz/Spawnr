@@ -19,24 +19,24 @@ namespace Spawnr
     using System;
     using System.Diagnostics;
 
-    public enum StandardOutputKind { Output, Error }
+    public enum OutputOrErrorKind { Output, Error }
 
     [DebuggerDisplay("{" + nameof(GetDebuggerDisplay) + "(),nq}")]
-    public struct OutputLine
+    public struct OutputOrErrorLine
     {
-        public static OutputLine Output(string line) =>
-            new OutputLine(StandardOutputKind.Output, line);
+        public static OutputOrErrorLine Output(string line) =>
+            new OutputOrErrorLine(OutputOrErrorKind.Output, line);
 
-        public static OutputLine Error(string line) =>
-            new OutputLine(StandardOutputKind.Error, line);
+        public static OutputOrErrorLine Error(string line) =>
+            new OutputOrErrorLine(OutputOrErrorKind.Error, line);
 
-        public bool IsOutput => Kind == StandardOutputKind.Output;
-        public bool IsError  => Kind == StandardOutputKind.Error;
+        public bool IsOutput => Kind == OutputOrErrorKind.Output;
+        public bool IsError  => Kind == OutputOrErrorKind.Error;
 
-        public StandardOutputKind Kind { get; }
+        public OutputOrErrorKind Kind { get; }
         public string Value { get; }
 
-        public OutputLine(StandardOutputKind kind, string value)
+        public OutputOrErrorLine(OutputOrErrorKind kind, string value)
         {
             Kind = kind;
             Value = value ?? throw new System.ArgumentNullException(nameof(value));
@@ -44,7 +44,7 @@ namespace Spawnr
 
         public override string ToString() => Value ?? string.Empty;
 
-        public void Deconstruct(out StandardOutputKind kind, out string line) =>
+        public void Deconstruct(out OutputOrErrorKind kind, out string line) =>
             (kind, line) = (Kind, Value);
 
         public T Match<T>(Func<string, T> output, Func<string, T> error)

@@ -27,7 +27,7 @@ namespace Spawnr
 
     public interface ISpawner
     {
-        IObservable<OutputLine> Spawn(string path, SpawnOptions options);
+        IObservable<OutputOrErrorLine> Spawn(string path, SpawnOptions options);
     }
 
     public static class Spawner
@@ -36,8 +36,8 @@ namespace Spawnr
 
         sealed class Implementation : ISpawner
         {
-            public IObservable<OutputLine> Spawn(string path, SpawnOptions options) =>
-                Observable.Create<OutputLine>(observer =>
+            public IObservable<OutputOrErrorLine> Spawn(string path, SpawnOptions options) =>
+                Observable.Create<OutputOrErrorLine>(observer =>
                     Spawner.Spawn(path, options, observer));
         }
 
@@ -73,7 +73,7 @@ namespace Spawnr
         }
 
         static IDisposable Spawn(string path, SpawnOptions options,
-                                 IObserver<OutputLine> observer)
+                                 IObserver<OutputOrErrorLine> observer)
         {
             var outputFlags = (options.CaptureError, options.CaptureOutput) switch
             {
@@ -103,10 +103,10 @@ namespace Spawnr
 
             if (options.CaptureOutput)
                 process.OutputDataReceived += CreateDataEventHandler(ControlFlags.OutputReceived,
-                                                                     OutputLine.Output);
+                                                                     OutputOrErrorLine.Output);
             if (options.CaptureError)
                 process.ErrorDataReceived += CreateDataEventHandler(ControlFlags.ErrorReceived,
-                                                                    OutputLine.Error);
+                                                                    OutputOrErrorLine.Error);
 
             process.Exited += delegate { OnExited(control); };
 
@@ -164,12 +164,12 @@ namespace Spawnr
                                 {
                                     switch (n.Kind)
                                     {
-                                        case NotificationKind.OnNext when n.Value is (StandardOutputKind.Output, var line):
+                                        case NotificationKind.OnNext when n.Value is (OutputOrErrorKind.Output, var line):
                                             await writer.WriteLineAsync(line).ConfigureAwait(false);
                                             break;
-                                        case NotificationKind.OnNext when n.Value is (StandardOutputKind.Error, var line)
+                                        case NotificationKind.OnNext when n.Value is (OutputOrErrorKind.Error, var line)
                                                                        && options.CaptureError:
-                                            observer.OnNext(OutputLine.Error(line));
+                                            observer.OnNext(OutputOrErrorLine.Error(line));
                                             break;
                                         case NotificationKind.OnError:
                                             throw n.Exception;
@@ -198,7 +198,7 @@ namespace Spawnr
 
             return subscription;
 
-            DataReceivedEventHandler CreateDataEventHandler(ControlFlags flags, Func<string, OutputLine> selector) =>
+            DataReceivedEventHandler CreateDataEventHandler(ControlFlags flags, Func<string, OutputOrErrorLine> selector) =>
                 (_, args) =>
                 {
                     bool killed, exited, outputsReceived;

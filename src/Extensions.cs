@@ -21,29 +21,29 @@ namespace Spawnr
 
     public static class LineExtensions
     {
-        public static IObservable<OutputLine>
+        public static IObservable<OutputOrErrorLine>
             AsOutput(this IObservable<string> source) =>
-            source.AsOutputKind(StandardOutputKind.Output);
+            source.AsOutputKind(OutputOrErrorKind.Output);
 
-        public static IObservable<OutputLine>
+        public static IObservable<OutputOrErrorLine>
             AsError(this IObservable<string> source) =>
-            source.AsOutputKind(StandardOutputKind.Error);
+            source.AsOutputKind(OutputOrErrorKind.Error);
 
-        static IObservable<OutputLine>
-            AsOutputKind(this IObservable<string> source, StandardOutputKind kind) =>
+        static IObservable<OutputOrErrorLine>
+            AsOutputKind(this IObservable<string> source, OutputOrErrorKind kind) =>
             from line in source ?? throw new ArgumentNullException(nameof(source))
-            select new OutputLine(kind, line);
+            select new OutputOrErrorLine(kind, line);
 
         public static IObservable<string>
-            FilterOutput(this IObservable<OutputLine> source) =>
-            source.Filter(StandardOutputKind.Error);
+            FilterOutput(this IObservable<OutputOrErrorLine> source) =>
+            source.Filter(OutputOrErrorKind.Error);
 
         public static IObservable<string>
-            FilterError(this IObservable<OutputLine> source) =>
-            source.Filter(StandardOutputKind.Error);
+            FilterError(this IObservable<OutputOrErrorLine> source) =>
+            source.Filter(OutputOrErrorKind.Error);
 
         static IObservable<string>
-            Filter(this IObservable<OutputLine> source, StandardOutputKind kind) =>
+            Filter(this IObservable<OutputOrErrorLine> source, OutputOrErrorKind kind) =>
             from line in source ?? throw new ArgumentNullException(nameof(source))
             where line.Kind == kind
             select line.Value;

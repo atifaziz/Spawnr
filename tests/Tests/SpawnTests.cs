@@ -392,7 +392,7 @@ namespace Spawnr.Tests
             static ISpawnable SpawnTestApp() =>
                 Spawn("dotnet", ProgramArguments.Var(_testAppPath!));
 
-            static ISpawnable<OutputLine> TestAppStreams() =>
+            static ISpawnable<OutputOrErrorLine> TestAppStreams() =>
                 SpawnTestApp().CaptureOutputs();
 
             static ISpawnable<string> TestAppOutput(IObservable<string>? stdin = null) =>
@@ -461,7 +461,7 @@ namespace Spawnr.Tests
             {
                 var (stdout, stderr) =
                     TestAppStreams().AddArgument("lorem", "3", "2", "4")
-                                    .Partition(e => e is (StandardOutputKind.Output, _),
+                                    .Partition(e => e is (OutputOrErrorKind.Output, _),
                                                (stdout, stderr) => (from e in stdout select e.Value,
                                                                     from e in stderr select e.Value));
 
@@ -498,7 +498,7 @@ namespace Spawnr.Tests
 
                 var (stdout, stderr) =
                     TestAppStreams().Input(stdin)
-                                    .Partition(e => e is (StandardOutputKind.Output, _),
+                                    .Partition(e => e is (OutputOrErrorKind.Output, _),
                                                (stdout, stderr) => (from e in stdout select e.Value,
                                                                     from e in stderr select e.Value));
 
@@ -535,7 +535,7 @@ namespace Spawnr.Tests
                             .Pipe(TestAppStreams())
                             .Pipe(TestAppStreams().AddArgument("upper"))
                             .Pipe(TestAppStreams().AddArgument("prefix", "> "))
-                            .Partition(e => e is (StandardOutputKind.Output, _),
+                            .Partition(e => e is (OutputOrErrorKind.Output, _),
                                        (stdout, stderr) => (from e in stdout select e.Value,
                                                             from e in stderr select e.Value));
 

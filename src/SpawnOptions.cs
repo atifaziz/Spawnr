@@ -56,7 +56,7 @@ namespace Spawnr
 
         SpawnOptions(ProgramArguments arguments, string workingDirectory,
                      ImmutableArray<KeyValuePair<string, string>> environment,
-                     IObservable<OutputLine>? input,
+                     IObservable<OutputOrErrorLine>? input,
                      bool suppressOutput, bool suppressError,
                      Func<ExitCodeErrorArgs, Exception?>? exitCodeErrorFunction,
                      Func<ProcessStartInfo, IProcess> processFactory,
@@ -82,7 +82,7 @@ namespace Spawnr
         public ProgramArguments Arguments { get; private set; }
         public string WorkingDirectory { get; private set; }
         public ImmutableArray<KeyValuePair<string, string>> Environment { get; private set; }
-        public IObservable<OutputLine>? Input { get; private set; }
+        public IObservable<OutputOrErrorLine>? Input { get; private set; }
         public bool SuppressOutput { get; private set; }
         public bool SuppressError { get; private set; }
         internal bool CaptureOutput => !SuppressOutput;
@@ -104,7 +104,7 @@ namespace Spawnr
              : value == Arguments || value.Count == 0 && Arguments.Count == 0 ? this
              : new SpawnOptions(this) { Arguments = value };
 
-        public SpawnOptions WithInput(IObservable<OutputLine>? value)
+        public SpawnOptions WithInput(IObservable<OutputOrErrorLine>? value)
             => value == Input ? this
              : new SpawnOptions(this) { Input = value };
 
