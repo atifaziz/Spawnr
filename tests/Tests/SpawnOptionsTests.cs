@@ -19,9 +19,6 @@ namespace Spawnr.Tests
 
             foreach (var e in options.Environment)
                 Assert.That(env[e.Key], Is.EqualTo(e.Value));
-
-            Assert.That(options.SuppressOutput, Is.False);
-            Assert.That(options.SuppressError, Is.False);
         }
 
         [Test]

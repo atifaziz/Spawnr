@@ -27,7 +27,9 @@ namespace Spawnr
 
     public interface ISpawner
     {
-        IObservable<OutputOrErrorLine> Spawn(string path, SpawnOptions options);
+        IObservable<T> Spawn<T>(string path, SpawnOptions options,
+                                Func<string, T>? stdout,
+                                Func<string, T>? stderr);
     }
 
     public static class Spawner
@@ -36,9 +38,11 @@ namespace Spawnr
 
         sealed class Implementation : ISpawner
         {
-            public IObservable<OutputOrErrorLine> Spawn(string path, SpawnOptions options) =>
-                Observable.Create<OutputOrErrorLine>(observer =>
-                    Spawner.Spawn(path, options, observer));
+            public IObservable<T>
+                Spawn<T>(string path, SpawnOptions options,
+                      Func<string, T>? stdout, Func<string, T>? stderr) =>
+                Observable.Create<T>(observer =>
+                    Spawner.Spawn(path, options, stdout, stderr, observer));
         }
 
         [Flags]
@@ -72,14 +76,15 @@ namespace Spawnr
             void Set(ControlFlags flags, bool value) { if (value) Set(flags); else Reset(flags); }
         }
 
-        static IDisposable Spawn(string path, SpawnOptions options,
-                                 IObserver<OutputOrErrorLine> observer)
+        static IDisposable Spawn<T>(string path, SpawnOptions options,
+                                    Func<string, T>? stdout, Func<string, T>? stderr,
+                                    IObserver<T> observer)
         {
-            var outputFlags = (options.CaptureError, options.CaptureOutput) switch
+            var outputFlags = (stderr, stdout) switch
             {
-                (true , false) => ControlFlags.ErrorReceived,
-                (false, true ) => ControlFlags.OutputReceived,
-                (true , true ) => ControlFlags.ErrorReceived | ControlFlags.OutputReceived,
+                ({}  , null) => ControlFlags.ErrorReceived,
+                (null, {}  ) => ControlFlags.OutputReceived,
+                ({}  , {}  ) => ControlFlags.ErrorReceived | ControlFlags.OutputReceived,
                 _ => ControlFlags.None,
             };
 
@@ -88,8 +93,8 @@ namespace Spawnr
                 CreateNoWindow         = true,
                 UseShellExecute        = false,
                 RedirectStandardInput  = options.Input is {},
-                RedirectStandardOutput = options.CaptureOutput,
-                RedirectStandardError  = options.CaptureError,
+                RedirectStandardOutput = stdout is {},
+                RedirectStandardError  = stderr is {},
             };
 
             options.Update(psi);
@@ -101,12 +106,10 @@ namespace Spawnr
             var control = new Control();
             IDisposable? inputSubscription = null;
 
-            if (options.CaptureOutput)
-                process.OutputDataReceived += CreateDataEventHandler(ControlFlags.OutputReceived,
-                                                                     OutputOrErrorLine.Output);
-            if (options.CaptureError)
-                process.ErrorDataReceived += CreateDataEventHandler(ControlFlags.ErrorReceived,
-                                                                    OutputOrErrorLine.Error);
+            if (stdout is {})
+                process.OutputDataReceived += CreateDataEventHandler(ControlFlags.OutputReceived, stdout);
+            if (stderr is {})
+                process.ErrorDataReceived += CreateDataEventHandler(ControlFlags.ErrorReceived, stderr);
 
             process.Exited += delegate { OnExited(control); };
 
@@ -147,9 +150,9 @@ namespace Spawnr
 
             try
             {
-                if (options.CaptureOutput)
+                if (stdout is {})
                     process.BeginOutputReadLine();
-                if (options.CaptureError)
+                if (stderr is {})
                     process.BeginErrorReadLine();
 
                 if (options.Input is {})
@@ -168,8 +171,8 @@ namespace Spawnr
                                             await writer.WriteLineAsync(line).ConfigureAwait(false);
                                             break;
                                         case NotificationKind.OnNext when n.Value is (OutputOrErrorKind.Error, var line)
-                                                                       && options.CaptureError:
-                                            observer.OnNext(OutputOrErrorLine.Error(line));
+                                                                       && stderr is {}:
+                                            observer.OnNext(stderr(line));
                                             break;
                                         case NotificationKind.OnError:
                                             throw n.Exception;
@@ -198,7 +201,7 @@ namespace Spawnr
 
             return subscription;
 
-            DataReceivedEventHandler CreateDataEventHandler(ControlFlags flags, Func<string, OutputOrErrorLine> selector) =>
+            DataReceivedEventHandler CreateDataEventHandler(ControlFlags flags, Func<string, T> selector) =>
                 (_, args) =>
                 {
                     bool killed, exited, outputsReceived;

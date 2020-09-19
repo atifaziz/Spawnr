@@ -21,6 +21,7 @@ namespace Spawnr
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.Linq;
+    using System.Reactive;
     using System.Reactive.Linq;
     using System.Threading;
     using System.Threading.Tasks;
@@ -223,10 +224,7 @@ namespace Spawnr
             new Spawnable<T>(
                 spawnable,
                 (spawnable, observer) =>
-                    spawnable.Spawner.Spawn(spawnable.ProgramPath,
-                                            spawnable.Options.WithSuppressOutput(stdout is null)
-                                                             .WithSuppressError(stderr is null))
-                                     .Select(e => e.IsOutput() ? stdout!(e.Value) : stderr!(e.Value))
+                    spawnable.Spawner.Spawn(spawnable.ProgramPath, spawnable.Options, stdout, stderr)
                                      .Subscribe(observer));
 
         // Conversion extensions
@@ -257,14 +255,13 @@ namespace Spawnr
         // Spawn methods
 
         public static ISpawnable Spawn(string path, ProgramArguments args) =>
-            new Spawnable<OutputOrErrorLine>(
+            new Spawnable<Unit>(
                 path,
                 SpawnOptions.Create().WithArguments(args),
                 Spawner.Default,
                 (spawnable, observer) =>
-                    spawnable.Spawner.Spawn(spawnable.ProgramPath,
-                                            spawnable.Options.WithSuppressOutput(true)
-                                                             .WithSuppressError(true))
+                    spawnable.Spawner.Spawn<Unit>(spawnable.ProgramPath,
+                                                  spawnable.Options, null, null)
                                      .Subscribe(observer));
 
         public static ISpawnable<KeyValuePair<T, string>>
@@ -298,9 +295,8 @@ namespace Spawnr
             var tcs = new TaskCompletionSource<int>();
 
             using var subscription =
-                spawnable.Spawner.Spawn(spawnable.ProgramPath,
-                                        spawnable.Options.WithSuppressOutput(true)
-                                                         .WithSuppressError(true))
+                spawnable.Spawner.Spawn<Unit>(spawnable.ProgramPath,
+                                              spawnable.Options, null, null)
                                  .Subscribe(
                                      onNext: delegate {},
                                      onError: e =>
