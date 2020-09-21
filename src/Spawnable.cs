@@ -226,8 +226,19 @@ namespace Spawnr
                     spawnable.Spawner.Spawn(spawnable.ProgramPath,
                                             spawnable.Options.WithSuppressOutput(stdout is null)
                                                              .WithSuppressError(stderr is null))
-                                     .Select(e => e.IsOutput ? stdout!(e.Value) : stderr!(e.Value))
+                                     .Select(e => e.IsOutput() ? stdout!(e.Value) : stderr!(e.Value))
                                      .Subscribe(observer));
+
+        // Conversion extensions
+
+        public static ISpawnable<string> AsString(this ISpawnable<OutputOrErrorLine> spawnable) =>
+            spawnable.CaptureOutputs(s => s, s => s);
+
+        public static ISpawnable<string> AsString(this ISpawnable<OutputLine> spawnable) =>
+            spawnable.CaptureOutputs(stdout: s => s, stderr: null);
+
+        public static ISpawnable<string> AsString(this ISpawnable<ErrorLine> spawnable) =>
+            spawnable.CaptureOutputs(stdout: null, stderr: s => s);
 
         // Extensions to setup pipes of spawnables
 

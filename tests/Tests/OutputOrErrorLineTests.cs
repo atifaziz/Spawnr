@@ -10,8 +10,8 @@ namespace Spawnr.Tests
         {
             var output = new OutputOrErrorLine();
             Assert.That(output.Kind, Is.EqualTo(OutputOrErrorKind.Output));
-            Assert.That(output.IsOutput, Is.True);
-            Assert.That(output.IsError, Is.False);
+            Assert.That(output.IsOutput(), Is.True);
+            Assert.That(output.IsError(), Is.False);
             Assert.That(output.Value, Is.Null);
             Assert.That(output.ToString(), Is.Empty);
         }
@@ -21,8 +21,8 @@ namespace Spawnr.Tests
         {
             var error = OutputOrErrorLine.Error("foobar");
             Assert.That(error.Kind, Is.EqualTo(OutputOrErrorKind.Error));
-            Assert.That(error.IsOutput, Is.False);
-            Assert.That(error.IsError, Is.True);
+            Assert.That(error.IsOutput(), Is.False);
+            Assert.That(error.IsError(), Is.True);
             Assert.That(error.Value, Is.EqualTo("foobar"));
             Assert.That(error.ToString(), Is.EqualTo(error.Value));
             var (kind, line) = error;
@@ -35,8 +35,8 @@ namespace Spawnr.Tests
         {
             var error = OutputOrErrorLine.Output("foobar");
             Assert.That(error.Kind, Is.EqualTo(OutputOrErrorKind.Output));
-            Assert.That(error.IsOutput, Is.True);
-            Assert.That(error.IsError, Is.False);
+            Assert.That(error.IsOutput(), Is.True);
+            Assert.That(error.IsError(), Is.False);
             Assert.That(error.Value, Is.EqualTo("foobar"));
             Assert.That(error.ToString(), Is.EqualTo(error.Value));
             var (kind, line) = error;
