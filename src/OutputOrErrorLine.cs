@@ -24,11 +24,11 @@ namespace Spawnr
     [DebuggerDisplay("{" + nameof(GetDebuggerDisplay) + "(),nq}")]
     public struct OutputOrErrorLine
     {
-        public static OutputOrErrorLine Output(string line) =>
-            new OutputOrErrorLine(OutputOrErrorKind.Output, line);
+        public static OutputOrErrorLine Output(string value) =>
+            new OutputOrErrorLine(OutputOrErrorKind.Output, value);
 
-        public static OutputOrErrorLine Error(string line) =>
-            new OutputOrErrorLine(OutputOrErrorKind.Error, line);
+        public static OutputOrErrorLine Error(string value) =>
+            new OutputOrErrorLine(OutputOrErrorKind.Error, value);
 
         public bool IsOutput => Kind == OutputOrErrorKind.Output;
         public bool IsError  => Kind == OutputOrErrorKind.Error;
@@ -44,8 +44,8 @@ namespace Spawnr
 
         public override string ToString() => Value ?? string.Empty;
 
-        public void Deconstruct(out OutputOrErrorKind kind, out string line) =>
-            (kind, line) = (Kind, Value);
+        public void Deconstruct(out OutputOrErrorKind kind, out string value) =>
+            (kind, value) = (Kind, Value);
 
         public T Match<T>(Func<string, T> output, Func<string, T> error)
             => output is null ? throw new ArgumentNullException(nameof(output))
