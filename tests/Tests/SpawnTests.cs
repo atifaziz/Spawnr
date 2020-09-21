@@ -392,23 +392,10 @@ namespace Spawnr.Tests
             static ISpawnable SpawnTestApp() =>
                 Spawn("dotnet", ProgramArguments.Var(_testAppPath!));
 
-            static ISpawnable<OutputOrErrorLine> TestAppStreams() =>
-                SpawnTestApp().CaptureOutputs();
-
-            static ISpawnable<string> TestAppOutput(IObservable<string>? stdin = null) =>
-                TestAppStreams()
-                    .Input(stdin?.AsOutput())
-                    .FilterOutput();
-
-            static ISpawnable<string> TestAppError(IObservable<string>? stdin = null) =>
-                TestAppStreams()
-                    .Input(stdin?.AsOutput())
-                    .FilterError();
-
             [Test]
             public void Nop()
             {
-                var output = TestAppStreams().AddArgument("nop");
+                var output = SpawnTestApp().AddArgument("nop").CaptureOutputs();
                 Assert.That(output, Is.Empty);
             }
 
@@ -425,7 +412,7 @@ namespace Spawnr.Tests
             public void Error()
             {
                 var e = Assert.Throws<ExternalProcessException>(() =>
-                    TestAppStreams().AddArgument("error").AsEnumerable().ToArray());
+                    SpawnTestApp().AddArgument("error").CaptureOutputs().AsEnumerable().ToArray());
 
                 Assert.That(e.Message, DoesMatchExitCodeErrorMessage(0xbd));
             }
@@ -433,7 +420,7 @@ namespace Spawnr.Tests
             [Test]
             public void LoremOutput()
             {
-                var result = TestAppOutput().AddArgument("lorem", "3");
+                var result = SpawnTestApp().AddArgument("lorem", "3").CaptureOutput().AsString();
 
                 Assert.That(result, Is.EqualTo(new[]
                 {
@@ -446,7 +433,7 @@ namespace Spawnr.Tests
             [Test]
             public void LoremError()
             {
-                var result = TestAppError().AddArgument("lorem", "0", "3");
+                var result = SpawnTestApp().AddArgument("lorem", "0", "3").CaptureError().AsString();
 
                 Assert.That(result, Is.EqualTo(new[]
                 {
@@ -460,10 +447,11 @@ namespace Spawnr.Tests
             public void Lorem()
             {
                 var (stdout, stderr) =
-                    TestAppStreams().AddArgument("lorem", "3", "2", "4")
-                                    .Partition(e => e is (OutputOrErrorKind.Output, _),
-                                               (stdout, stderr) => (from e in stdout select e.Value,
-                                                                    from e in stderr select e.Value));
+                    SpawnTestApp().AddArgument("lorem", "3", "2", "4")
+                                  .CaptureOutputs()
+                                  .Partition(e => e is (OutputOrErrorKind.Output, _),
+                                             (stdout, stderr) => (from e in stdout select e.Value,
+                                                                  from e in stderr select e.Value));
 
                 Assert.That(stdout, Is.EqualTo(new[]
                 {
@@ -497,10 +485,11 @@ namespace Spawnr.Tests
                 var stdin = commands.ToObservable();
 
                 var (stdout, stderr) =
-                    TestAppStreams().Input(stdin)
-                                    .Partition(e => e is (OutputOrErrorKind.Output, _),
-                                               (stdout, stderr) => (from e in stdout select e.Value,
-                                                                    from e in stderr select e.Value));
+                    SpawnTestApp().Input(stdin)
+                                  .CaptureOutputs()
+                                  .Partition(e => e is (OutputOrErrorKind.Output, _),
+                                             (stdout, stderr) => (from e in stdout select e.Value,
+                                                                  from e in stderr select e.Value));
 
 
                 Assert.That(stdout, Is.EqualTo(new[]
@@ -532,9 +521,9 @@ namespace Spawnr.Tests
 
                 var (stdout, stderr) =
                     commands.ToObservable()
-                            .Pipe(TestAppStreams())
-                            .Pipe(TestAppStreams().AddArgument("upper"))
-                            .Pipe(TestAppStreams().AddArgument("prefix", "> "))
+                            .Pipe(SpawnTestApp().CaptureOutputs())
+                            .Pipe(SpawnTestApp().CaptureOutputs().AddArgument("upper"))
+                            .Pipe(SpawnTestApp().CaptureOutputs().AddArgument("prefix", "> "))
                             .Partition(e => e is (OutputOrErrorKind.Output, _),
                                        (stdout, stderr) => (from e in stdout select e.Value,
                                                             from e in stderr select e.Value));

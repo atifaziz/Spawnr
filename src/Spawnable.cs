@@ -147,8 +147,15 @@ namespace Spawnr
                                        IObservable<OutputOrErrorLine>? value) =>
             spawnable.WithOptions(spawnable.Options.WithInput(value));
 
-        public static ISpawnable Input<T>(this ISpawnable spawnable,
-                                          IObservable<string>? value) =>
+        public static ISpawnable Input(this ISpawnable spawnable,
+                                       IObservable<OutputLine>? value) =>
+            spawnable.Input(value is {} lines
+                            ? from line in lines
+                              select OutputOrErrorLine.Output(line)
+                            : null);
+
+        public static ISpawnable Input(this ISpawnable spawnable,
+                                       IObservable<string>? value) =>
             spawnable.Input(value is {} strs ? strs.AsOutput() : null);
 
         // Generic ISpawnable extensions for updating options
@@ -188,6 +195,13 @@ namespace Spawnr
             spawnable.WithOptions(spawnable.Options.WithInput(value));
 
         public static ISpawnable<T> Input<T>(this ISpawnable<T> spawnable,
+                                             IObservable<OutputLine>? value) =>
+            spawnable.Input(value is {} lines
+                            ? from line in lines
+                              select OutputOrErrorLine.Output(line)
+                            : null);
+
+        public static ISpawnable<T> Input<T>(this ISpawnable<T> spawnable,
                                              IObservable<string>? value) =>
             spawnable.Input(value is {} strs ? strs.AsOutput() : null);
 
@@ -206,17 +220,17 @@ namespace Spawnr
         public static ISpawnable<OutputOrErrorLine> CaptureOutputs(this ISpawnable spawnable) =>
             spawnable.CaptureOutputs(OutputOrErrorLine.Output, OutputOrErrorLine.Error);
 
-        public static ISpawnable<string> CaptureOutput(this ISpawnable spawnable) =>
-            spawnable.CaptureOutputs(stdout: s => s, stderr: null);
+        public static ISpawnable<OutputLine> CaptureOutput(this ISpawnable spawnable) =>
+            spawnable.CaptureOutputs(stdout: s => new OutputLine(s), stderr: null);
 
-        public static ISpawnable<string> CaptureError(this ISpawnable spawnable) =>
-            spawnable.CaptureOutputs(stdout: null, stderr: s => s);
+        public static ISpawnable<ErrorLine> CaptureError(this ISpawnable spawnable) =>
+            spawnable.CaptureOutputs(stdout: null, stderr: s => new ErrorLine(s));
 
-        public static ISpawnable<string> FilterOutput(this ISpawnable<OutputOrErrorLine> spawnable) =>
-            spawnable.CaptureOutputs(stdout: s => s, stderr: null);
+        public static ISpawnable<OutputLine> FilterOutput(this ISpawnable<OutputOrErrorLine> spawnable) =>
+            spawnable.CaptureOutput();
 
-        public static ISpawnable<string> FilterError(this ISpawnable<OutputOrErrorLine> spawnable) =>
-            spawnable.CaptureOutputs(stdout: null, stderr: s => s);
+        public static ISpawnable<ErrorLine> FilterError(this ISpawnable<OutputOrErrorLine> spawnable) =>
+            spawnable.CaptureError();
 
         public static ISpawnable<T>
             CaptureOutputs<T>(this ISpawnable spawnable, Func<string, T>? stdout,
