@@ -19,7 +19,7 @@ namespace Spawnr
     using System;
     using System.Reactive.Linq;
 
-    public static class LineExtensions
+    static class LineExtensions
     {
         public static IObservable<OutputOrErrorLine>
             AsOutput(this IObservable<string> source) =>
