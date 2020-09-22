@@ -269,17 +269,32 @@ namespace Spawnr
 
         // Extensions to setup pipes of spawnables
 
-        public static ISpawnable<string>
-            Pipe(this IObservable<string> first, ISpawnable<string> second) =>
-            second.Input(first);
+        public static ISpawnable<OutputOrErrorLine>
+            Pipe(this ISpawnable first, ISpawnable second) =>
+            second.CaptureOutputs().Input(first.CaptureOutputs());
 
         public static ISpawnable<OutputOrErrorLine>
-            Pipe(this ISpawnable<OutputOrErrorLine> first, ISpawnable<OutputOrErrorLine> second) =>
-            second.Input(first);
+            Pipe(this ISpawnable spawnable, params ISpawnable[] spawnables) =>
+            spawnables.Aggregate(spawnable.CaptureOutputs(), (left, right) => left.Pipe(right));
+
+        public static ISpawnable<OutputLine>
+            Pipe(this ISpawnable<OutputLine> first, ISpawnable second) =>
+            second.CaptureOutput()
+                  .Input(from line in first.AsObservable()
+                         select OutputOrErrorLine.Output(line));
+
+        public static ISpawnable<OutputLine>
+            Pipe(this ISpawnable<OutputLine> spawnable, params ISpawnable[] spawnables) =>
+            spawnables.Aggregate(spawnable, (left, right) => left.Pipe(right));
 
         public static ISpawnable<OutputOrErrorLine>
-            Pipe(this IObservable<string> first, ISpawnable<OutputOrErrorLine> second) =>
-            second.Input(first.AsOutput());
+            Pipe(this IObservable<string> input, ISpawnable spawnable) =>
+            spawnable.CaptureOutputs().Input(input.AsOutput());
+
+        public static ISpawnable<OutputOrErrorLine>
+            Pipe(this IObservable<string> input, ISpawnable spawnable,
+                 params ISpawnable[] spawnables) =>
+            input.Pipe(spawnable).Pipe(spawnables);
 
         // Spawn methods
 

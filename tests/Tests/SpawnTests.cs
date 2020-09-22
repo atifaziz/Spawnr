@@ -521,9 +521,9 @@ namespace Spawnr.Tests
 
                 var (stdout, stderr) =
                     commands.ToObservable()
-                            .Pipe(SpawnTestApp().CaptureOutputs())
-                            .Pipe(SpawnTestApp().CaptureOutputs().AddArgument("upper"))
-                            .Pipe(SpawnTestApp().CaptureOutputs().AddArgument("prefix", "> "))
+                            .Pipe(SpawnTestApp(),
+                                  SpawnTestApp().AddArgument("upper"),
+                                  SpawnTestApp().AddArgument("prefix", "> "))
                             .Partition(e => e is (OutputOrErrorKind.Output, _),
                                        (stdout, stderr) => (from e in stdout select e.Value,
                                                             from e in stderr select e.Value));
