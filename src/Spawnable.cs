@@ -218,13 +218,28 @@ namespace Spawnr
         // Extensions related to capture outputs
 
         public static ISpawnable<OutputOrErrorLine> CaptureOutputs(this ISpawnable spawnable) =>
-            spawnable.CaptureOutputs(OutputOrErrorLine.Output, OutputOrErrorLine.Error);
+            spawnable switch
+            {
+                null => throw new ArgumentNullException(nameof(spawnable)),
+                ISpawnable<OutputOrErrorLine> sp => sp,
+                var sp => sp.CaptureOutputs(OutputOrErrorLine.Output, OutputOrErrorLine.Error)
+            };
 
         public static ISpawnable<OutputLine> CaptureOutput(this ISpawnable spawnable) =>
-            spawnable.CaptureOutputs(stdout: s => new OutputLine(s), stderr: null);
+            spawnable switch
+            {
+                null => throw new ArgumentNullException(nameof(spawnable)),
+                ISpawnable<OutputLine> sp => sp,
+                var sp => sp.CaptureOutputs(stdout: s => new OutputLine(s), stderr: null)
+            };
 
         public static ISpawnable<ErrorLine> CaptureError(this ISpawnable spawnable) =>
-            spawnable.CaptureOutputs(stdout: null, stderr: s => new ErrorLine(s));
+            spawnable switch
+            {
+                null => throw new ArgumentNullException(nameof(spawnable)),
+                ISpawnable<ErrorLine> sp => sp,
+                var sp => sp.CaptureOutputs(stdout: null, stderr: s => new ErrorLine(s))
+            };
 
         public static ISpawnable<OutputLine> FilterOutput(this ISpawnable<OutputOrErrorLine> spawnable) =>
             spawnable.CaptureOutput();
