@@ -28,7 +28,7 @@ namespace Spawnr
     }
 
     [DebuggerDisplay("{" + nameof(Value) + "}")]
-    public struct OutputLine : IOutputOrErrorLine
+    public readonly struct OutputLine : IOutputOrErrorLine
     {
         public OutputLine(string value) =>
             Value = value ?? throw new System.ArgumentNullException(nameof(value));
@@ -44,7 +44,7 @@ namespace Spawnr
     }
 
     [DebuggerDisplay("{" + nameof(Value) + "}")]
-    public struct ErrorLine : IOutputOrErrorLine
+    public readonly struct ErrorLine : IOutputOrErrorLine
     {
         public ErrorLine(string value) =>
             Value = value ?? throw new System.ArgumentNullException(nameof(value));
@@ -58,7 +58,7 @@ namespace Spawnr
     }
 
     [DebuggerDisplay("{" + nameof(GetDebuggerDisplay) + "(),nq}")]
-    public struct OutputOrErrorLine : IOutputOrErrorLine
+    public readonly struct OutputOrErrorLine : IOutputOrErrorLine
     {
         public static OutputOrErrorLine Output(string value) =>
             new OutputOrErrorLine(OutputOrErrorKind.Output, value);
