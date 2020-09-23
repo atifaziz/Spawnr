@@ -44,7 +44,7 @@ namespace Spawnr
 
     sealed class Process : IProcess
     {
-        SysProcess _process;
+        readonly SysProcess _process;
 
         public Process(SysProcess process) =>
             _process = process;
