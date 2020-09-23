@@ -399,7 +399,7 @@ namespace Spawnr.Tests
                 Assert.That(output, Is.Empty);
             }
 
-            RegexConstraint DoesMatchExitCodeErrorMessage(int exitCode) =>
+            static RegexConstraint DoesMatchExitCodeErrorMessage(int exitCode) =>
                 Does.Match(@"^"
                             + Regex.Escape(@"Process ""dotnet"" (launched as the ID ")
                             + @"[1-9][0-9]*"
