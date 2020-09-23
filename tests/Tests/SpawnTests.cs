@@ -410,7 +410,7 @@ namespace Spawnr.Tests
             public void Error()
             {
                 var e = Assert.Throws<ExternalProcessException>(() =>
-                    SpawnTestApp().AddArgument("error").CaptureOutputs().AsEnumerable().ToArray());
+                    _ = SpawnTestApp().AddArgument("error").CaptureOutputs().AsEnumerable().ToArray());
 
                 Assert.That(e.Message, DoesMatchExitCodeErrorMessage(0xbd));
             }
