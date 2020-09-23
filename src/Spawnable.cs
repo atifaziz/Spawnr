@@ -353,8 +353,8 @@ namespace Spawnr
                      Func<string, T>? stdout, Func<string, T>? stderr) =>
             Spawn(path, args).Input(stdin).CaptureOutputs(stdout, stderr);
 
-        public static async Task<int> Async(this ISpawnable spawnable,
-                                            CancellationToken cancellationToken = default)
+        public static async Task<int> Execute(this ISpawnable spawnable,
+                                              CancellationToken cancellationToken = default)
         {
             var tcs = new TaskCompletionSource<int>();
 

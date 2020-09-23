@@ -542,26 +542,26 @@ namespace Spawnr.Tests
             }
 
             [Test]
-            public async Task AsyncZeroExit()
+            public async Task ExecuteZeroExit()
             {
-                var exitCode = await SpawnTestApp().AddArgument("nop").Async();
+                var exitCode = await SpawnTestApp().AddArgument("nop").Execute();
                 Assert.That(exitCode, Is.Zero);
             }
             [Test]
 
-            public async Task AsyncNonZeroExit()
+            public async Task ExecuteNonZeroExit()
             {
-                var exitCode = await SpawnTestApp().AddArgument("exit", "42").Async();
+                var exitCode = await SpawnTestApp().AddArgument("exit", "42").Execute();
                 Assert.That(exitCode, Is.EqualTo(42));
             }
 
             [Test]
-            public void AsyncCancellation()
+            public void ExecuteCancellation()
             {
                 var cts = new CancellationTokenSource();
                 cts.CancelAfter(TimeSpan.FromSeconds(0.5));
                 var e = Assert.ThrowsAsync<TaskCanceledException>(async () =>
-                    _ = await SpawnTestApp().AddArgument("sleep", "3").Async(cts.Token));
+                    _ = await SpawnTestApp().AddArgument("sleep", "3").Execute(cts.Token));
                 Assert.That(e.Task, Is.Not.Null);
             }
         }
