@@ -426,7 +426,7 @@ namespace Spawnr
             while (true)
             {
                 await semaphore.WaitAsync(cancellationToken)
-                                .ConfigureAwait(false);
+                               .ConfigureAwait(false);
 
                 if (completed)
                     break;
