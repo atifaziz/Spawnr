@@ -93,7 +93,7 @@ namespace Spawnr.Tests
             var process = subscription.Tag;
             process.FireOutputDataReceived("output");
             process.FireErrorDataReceived("error");
-            process.End(0);
+            process.End();
 
             Assert.That(notifications, Is.Empty);
         }

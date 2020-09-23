@@ -20,7 +20,7 @@ namespace Spawnr
     using System.Runtime.Serialization;
 
     [Serializable]
-    public class ExternalProcessException : Exception, ISerializable
+    public class ExternalProcessException : Exception
     {
         public ExternalProcessException(int exitCode) :
             this(exitCode, null) {}

@@ -54,7 +54,7 @@ namespace Spawnr
             OutputReceived = 0b_0100,
             ErrorReceived  = 0b_1000,
             Mask           = 0b_1111,
-        };
+        }
 
         sealed class Control
         {
@@ -71,7 +71,7 @@ namespace Spawnr
                 set => Set(flags, value);
             }
 
-            void Reset(ControlFlags flags) => _flags &= (~flags & ControlFlags.Mask);
+            void Reset(ControlFlags flags) => _flags &= ~flags & ControlFlags.Mask;
             void Set(ControlFlags flags) => _flags |= flags;
             void Set(ControlFlags flags, bool value) { if (value) Set(flags); else Reset(flags); }
         }
@@ -124,7 +124,7 @@ namespace Spawnr
 
                 try
                 {
-                    _ = process.TryKill(out var _);
+                    _ = process.TryKill(out _);
                 }
                 catch (Exception e)
                 {

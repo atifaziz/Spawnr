@@ -57,12 +57,12 @@ namespace Spawnr
         }
 
         ICollection<string> Args
-            => _line is string line
+            => _line is {} line
              ? line.Length == 0 ? (ICollection<string>)Array.Empty<string>()
-             : _parsedLineArgs ?? (_parsedLineArgs = ParseArgumentsIntoList(line))
+             : _parsedLineArgs ??= ParseArgumentsIntoList(line)
              : _args;
 
-        public int Count => _line is string s && s.Length == 0 ? 0 : Args.Count;
+        public int Count => _line is {} s && s.Length == 0 ? 0 : Args.Count;
 
         IEnumerator IEnumerable.GetEnumerator() =>
             GetEnumerator();

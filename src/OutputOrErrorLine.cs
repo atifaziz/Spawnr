@@ -31,7 +31,7 @@ namespace Spawnr
     public readonly struct OutputLine : IOutputOrErrorLine
     {
         public OutputLine(string value) =>
-            Value = value ?? throw new System.ArgumentNullException(nameof(value));
+            Value = value ?? throw new ArgumentNullException(nameof(value));
 
         public OutputOrErrorKind Kind => OutputOrErrorKind.Output;
         public string Value { get; }
@@ -47,7 +47,7 @@ namespace Spawnr
     public readonly struct ErrorLine : IOutputOrErrorLine
     {
         public ErrorLine(string value) =>
-            Value = value ?? throw new System.ArgumentNullException(nameof(value));
+            Value = value ?? throw new ArgumentNullException(nameof(value));
 
         public OutputOrErrorKind Kind => OutputOrErrorKind.Output;
         public string Value { get; }
@@ -69,7 +69,7 @@ namespace Spawnr
         public OutputOrErrorLine(OutputOrErrorKind kind, string value)
         {
             Kind = kind;
-            Value = value ?? throw new System.ArgumentNullException(nameof(value));
+            Value = value ?? throw new ArgumentNullException(nameof(value));
         }
 
         public OutputOrErrorKind Kind { get; }

@@ -106,7 +106,7 @@ static class Program
         }
     }
 
-    sealed class InvalidCommandException : System.Exception
+    sealed class InvalidCommandException : Exception
     {
         public InvalidCommandException(string message) : base(message) {}
     }
