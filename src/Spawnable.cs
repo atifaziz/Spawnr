@@ -129,28 +129,28 @@ namespace Spawnr
         public static ISpawnable AddArgument(this ISpawnable spawnable, params string[] values) =>
             spawnable.Options(opts => opts.AddArgument(values));
 
-        public static ISpawnable AddArguments<T>(this ISpawnable spawnable, IEnumerable<string> values) =>
+        public static ISpawnable AddArguments(this ISpawnable spawnable, IEnumerable<string> values) =>
             spawnable.Options(opts => opts.AddArguments(values));
 
-        public static ISpawnable ClearArguments<T>(this ISpawnable spawnable) =>
+        public static ISpawnable ClearArguments(this ISpawnable spawnable) =>
             spawnable.Options(opts => opts.ClearArguments());
 
-        public static ISpawnable SetCommandLine<T>(this ISpawnable spawnable, string value) =>
+        public static ISpawnable SetCommandLine(this ISpawnable spawnable, string value) =>
             spawnable.Options(opts => opts.SetCommandLine(value));
 
-        public static ISpawnable ClearEnvironment<T>(this ISpawnable spawnable) =>
+        public static ISpawnable ClearEnvironment(this ISpawnable spawnable) =>
             spawnable.Options(opts => opts.ClearEnvironment());
 
-        public static ISpawnable AddEnvironment<T>(this ISpawnable spawnable, string name, string value) =>
+        public static ISpawnable AddEnvironment(this ISpawnable spawnable, string name, string value) =>
             spawnable.Options(opts => opts.AddEnvironment(name, value));
 
-        public static ISpawnable SetEnvironment<T>(this ISpawnable spawnable, string name, string value) =>
+        public static ISpawnable SetEnvironment(this ISpawnable spawnable, string name, string value) =>
             spawnable.Options(opts => opts.SetEnvironment(name, value));
 
-        public static ISpawnable UnsetEnvironment<T>(this ISpawnable spawnable, string name) =>
+        public static ISpawnable UnsetEnvironment(this ISpawnable spawnable, string name) =>
             spawnable.Options(opts => opts.UnsetEnvironment(name));
 
-        public static ISpawnable WorkingDirectory<T>(this ISpawnable spawnable, string value) =>
+        public static ISpawnable WorkingDirectory(this ISpawnable spawnable, string value) =>
             spawnable.Options(opts => opts.WithWorkingDirectory(value));
 
         public static ISpawnable Input(this ISpawnable spawnable,
