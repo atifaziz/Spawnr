@@ -39,8 +39,6 @@ namespace Spawnr
         public override string ToString() => Value ?? string.Empty;
 
         public static implicit operator string(OutputLine value) => value.Value;
-
-        string GetDebuggerDisplay() => $"{Kind}: {Value}";
     }
 
     [DebuggerDisplay("{" + nameof(Value) + "}")]
