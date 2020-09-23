@@ -113,39 +113,49 @@ namespace Spawnr
     {
         // Non-generic ISpawnable extensions for updating options
 
+        public static ISpawnable
+            Options(this ISpawnable spawnable,
+                    Func<SpawnOptions, SpawnOptions> function)
+        {
+            if (spawnable is null) throw new ArgumentNullException(nameof(spawnable));
+            if (function is null) throw new ArgumentNullException(nameof(function));
+
+            return spawnable.WithOptions(function(spawnable.Options));
+        }
+
         public static ISpawnable AddArgument(this ISpawnable spawnable, string value) =>
-            spawnable.WithOptions(spawnable.Options.AddArgument(value));
+            spawnable.Options(opts => opts.AddArgument(value));
 
         public static ISpawnable AddArgument(this ISpawnable spawnable, params string[] values) =>
-            spawnable.WithOptions(spawnable.Options.AddArgument(values));
+            spawnable.Options(opts => opts.AddArgument(values));
 
         public static ISpawnable AddArguments<T>(this ISpawnable spawnable, IEnumerable<string> values) =>
-            spawnable.WithOptions(spawnable.Options.AddArguments(values));
+            spawnable.Options(opts => opts.AddArguments(values));
 
         public static ISpawnable ClearArguments<T>(this ISpawnable spawnable) =>
-            spawnable.WithOptions(spawnable.Options.ClearArguments());
+            spawnable.Options(opts => opts.ClearArguments());
 
         public static ISpawnable SetCommandLine<T>(this ISpawnable spawnable, string value) =>
-            spawnable.WithOptions(spawnable.Options.SetCommandLine(value));
+            spawnable.Options(opts => opts.SetCommandLine(value));
 
         public static ISpawnable ClearEnvironment<T>(this ISpawnable spawnable) =>
-            spawnable.WithOptions(spawnable.Options.ClearEnvironment());
+            spawnable.Options(opts => opts.ClearEnvironment());
 
         public static ISpawnable AddEnvironment<T>(this ISpawnable spawnable, string name, string value) =>
-            spawnable.WithOptions(spawnable.Options.AddEnvironment(name, value));
+            spawnable.Options(opts => opts.AddEnvironment(name, value));
 
         public static ISpawnable SetEnvironment<T>(this ISpawnable spawnable, string name, string value) =>
-            spawnable.WithOptions(spawnable.Options.SetEnvironment(name, value));
+            spawnable.Options(opts => opts.SetEnvironment(name, value));
 
         public static ISpawnable UnsetEnvironment<T>(this ISpawnable spawnable, string name) =>
-            spawnable.WithOptions(spawnable.Options.UnsetEnvironment(name));
+            spawnable.Options(opts => opts.UnsetEnvironment(name));
 
         public static ISpawnable WorkingDirectory<T>(this ISpawnable spawnable, string value) =>
-            spawnable.WithOptions(spawnable.Options.WithWorkingDirectory(value));
+            spawnable.Options(opts => opts.WithWorkingDirectory(value));
 
         public static ISpawnable Input(this ISpawnable spawnable,
                                        IObservable<OutputOrErrorLine>? value) =>
-            spawnable.WithOptions(spawnable.Options.WithInput(value));
+            spawnable.Options(opts => opts.WithInput(value));
 
         public static ISpawnable Input(this ISpawnable spawnable,
                                        IObservable<OutputLine>? value) =>
@@ -160,39 +170,49 @@ namespace Spawnr
 
         // Generic ISpawnable extensions for updating options
 
+        public static ISpawnable<T>
+            Options<T>(this ISpawnable<T> spawnable,
+                       Func<SpawnOptions, SpawnOptions> modifier)
+        {
+            if (spawnable is null) throw new ArgumentNullException(nameof(spawnable));
+            if (modifier is null) throw new ArgumentNullException(nameof(modifier));
+
+            return spawnable.WithOptions(modifier(spawnable.Options));
+        }
+
         public static ISpawnable<T> AddArgument<T>(this ISpawnable<T> spawnable, string value) =>
-            spawnable.WithOptions(spawnable.Options.AddArgument(value));
+            spawnable.Options(opts => opts.AddArgument(value));
 
         public static ISpawnable<T> AddArgument<T>(this ISpawnable<T> spawnable, params string[] values) =>
-            spawnable.WithOptions(spawnable.Options.AddArgument(values));
+            spawnable.Options(opts => opts.AddArgument(values));
 
         public static ISpawnable<T> AddArguments<T>(this ISpawnable<T> spawnable, IEnumerable<string> values) =>
-            spawnable.WithOptions(spawnable.Options.AddArguments(values));
+            spawnable.Options(opts => opts.AddArguments(values));
 
         public static ISpawnable<T> ClearArguments<T>(this ISpawnable<T> spawnable) =>
-            spawnable.WithOptions(spawnable.Options.ClearArguments());
+            spawnable.Options(opts => opts.ClearArguments());
 
         public static ISpawnable<T> SetCommandLine<T>(this ISpawnable<T> spawnable, string value) =>
-            spawnable.WithOptions(spawnable.Options.SetCommandLine(value));
+            spawnable.Options(opts => opts.SetCommandLine(value));
 
         public static ISpawnable<T> ClearEnvironment<T>(this ISpawnable<T> spawnable) =>
-            spawnable.WithOptions(spawnable.Options.ClearEnvironment());
+            spawnable.Options(opts => opts.ClearEnvironment());
 
         public static ISpawnable<T> AddEnvironment<T>(this ISpawnable<T> spawnable, string name, string value) =>
-            spawnable.WithOptions(spawnable.Options.AddEnvironment(name, value));
+            spawnable.Options(opts => opts.AddEnvironment(name, value));
 
         public static ISpawnable<T> SetEnvironment<T>(this ISpawnable<T> spawnable, string name, string value) =>
-            spawnable.WithOptions(spawnable.Options.SetEnvironment(name, value));
+            spawnable.Options(opts => opts.SetEnvironment(name, value));
 
         public static ISpawnable<T> UnsetEnvironment<T>(this ISpawnable<T> spawnable, string name) =>
-            spawnable.WithOptions(spawnable.Options.UnsetEnvironment(name));
+            spawnable.Options(opts => opts.UnsetEnvironment(name));
 
         public static ISpawnable<T> WorkingDirectory<T>(this ISpawnable<T> spawnable, string value) =>
-            spawnable.WithOptions(spawnable.Options.WithWorkingDirectory(value));
+            spawnable.Options(opts => opts.WithWorkingDirectory(value));
 
         public static ISpawnable<T> Input<T>(this ISpawnable<T> spawnable,
                                              IObservable<OutputOrErrorLine>? value) =>
-            spawnable.WithOptions(spawnable.Options.WithInput(value));
+            spawnable.Options(opts => opts.WithInput(value));
 
         public static ISpawnable<T> Input<T>(this ISpawnable<T> spawnable,
                                              IObservable<OutputLine>? value) =>
