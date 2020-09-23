@@ -387,8 +387,6 @@ namespace Spawnr.Tests
                             .ToArray());
             }
 
-            enum Std { Out, Err }
-
             static ISpawnable SpawnTestApp() =>
                 Spawn("dotnet", ProgramArguments.Var(_testAppPath!));
 
