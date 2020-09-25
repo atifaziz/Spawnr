@@ -204,11 +204,11 @@ namespace Spawnr.Tests
         }
 
         [Test]
-        public void SuppressNonZeroExitCodeError()
+        public void IgnoreExitCode()
         {
             var notifications = new List<Notification<string>>();
 
-            using var subscription = TestSpawn(SpawnOptions.SuppressNonZeroExitCodeError(),
+            using var subscription = TestSpawn(SpawnOptions.IgnoreExitCode(),
                                                notifications,
                                                s => $"out: {s}",
                                                s => $"err: {s}");
@@ -227,7 +227,7 @@ namespace Spawnr.Tests
         {
             var notifications = new List<Notification<string>>();
 
-            using var subscription = TestSpawn(SpawnOptions.SuppressNonZeroExitCodeError(),
+            using var subscription = TestSpawn(SpawnOptions.IgnoreExitCode(),
                                                notifications, s => $"out: {s}", null);
 
             var process = subscription.Tag;
@@ -258,7 +258,7 @@ namespace Spawnr.Tests
         {
             var notifications = new List<Notification<string>>();
 
-            using var subscription = TestSpawn(SpawnOptions.SuppressNonZeroExitCodeError(),
+            using var subscription = TestSpawn(SpawnOptions.IgnoreExitCode(),
                                                notifications, null, s => $"err: {s}");
 
             var process = subscription.Tag;
@@ -289,7 +289,7 @@ namespace Spawnr.Tests
         {
             var notifications = new List<Notification<string>>();
 
-            using var subscription = TestSpawn(SpawnOptions.SuppressNonZeroExitCodeError(),
+            using var subscription = TestSpawn(SpawnOptions.IgnoreExitCode(),
                                                notifications, null, null);
 
             var process = subscription.Tag;

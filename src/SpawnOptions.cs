@@ -187,7 +187,7 @@ namespace Spawnr
                  : options;
         }
 
-        public static SpawnOptions SuppressNonZeroExitCodeError(this SpawnOptions options)
+        public static SpawnOptions IgnoreExitCode(this SpawnOptions options)
             => options is null
              ? throw new ArgumentNullException(nameof(options))
              : options.WithExitCodeErrorFunction(_ => null);
