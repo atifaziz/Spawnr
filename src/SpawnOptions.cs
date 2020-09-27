@@ -22,6 +22,7 @@ namespace Spawnr
     using System.Collections.Immutable;
     using System.Diagnostics;
     using System.Linq;
+    using System.Reactive.Linq;
     using System.Runtime.InteropServices;
     using SysProcess = System.Diagnostics.Process;
 
@@ -191,6 +192,11 @@ namespace Spawnr
             => options is null
              ? throw new ArgumentNullException(nameof(options))
              : options.WithExitCodeErrorFunction(_ => null);
+
+        public static SpawnOptions EmptyInput(this SpawnOptions options)
+            => options is null
+             ? throw new ArgumentNullException(nameof(options))
+             : options.WithInput(Observable.Empty<OutputOrErrorLine>());
 
         public static void Update(this SpawnOptions options, ProcessStartInfo startInfo)
         {

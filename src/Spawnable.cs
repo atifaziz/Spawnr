@@ -168,6 +168,9 @@ namespace Spawnr
                                        IObservable<string>? value) =>
             spawnable.Input(value is {} strs ? strs.AsOutput() : null);
 
+        public static ISpawnable EmptyInput(this ISpawnable spawnable) =>
+            spawnable.Options(opts => opts.EmptyInput());
+
         // Generic ISpawnable extensions for updating options
 
         public static ISpawnable<T>
@@ -224,6 +227,9 @@ namespace Spawnr
         public static ISpawnable<T> Input<T>(this ISpawnable<T> spawnable,
                                              IObservable<string>? value) =>
             spawnable.Input(value is {} strs ? strs.AsOutput() : null);
+
+        public static ISpawnable EmptyInput<T>(this ISpawnable<T> spawnable) =>
+            spawnable.Options(opts => opts.EmptyInput());
 
         // Disambiguation extensions
 
