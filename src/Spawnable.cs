@@ -380,13 +380,12 @@ namespace Spawnr
 
             using var registration
                 = cancellationToken.CanBeCanceled
-                ? cancellationToken.Register(
-                      useSynchronizationContext: false,
-                      callback: () =>
-                      {
-                          tcs.TrySetException(new TaskCanceledException(tcs.Task));
-                          subscription.Dispose();
-                      })
+                ? cancellationToken.Register(useSynchronizationContext: false,
+                                             callback: () =>
+                                             {
+                                                 tcs.TrySetCanceled(cancellationToken);
+                                                 subscription.Dispose();
+                                             })
                 : default;
 
             await tcs.Task.ConfigureAwait(false);
