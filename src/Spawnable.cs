@@ -388,8 +388,7 @@ namespace Spawnr
                                              })
                 : default;
 
-            await tcs.Task.ConfigureAwait(false);
-            return tcs.Task.Result;
+            return await tcs.Task.ConfigureAwait(false);
         }
     }
 }
