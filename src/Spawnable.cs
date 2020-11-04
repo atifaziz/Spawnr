@@ -362,7 +362,7 @@ namespace Spawnr
         public static async Task<int> Execute(this ISpawnable spawnable,
                                               CancellationToken cancellationToken = default)
         {
-            var tcs = new TaskCompletionSource<int>();
+            var tcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             using var subscription =
                 spawnable.Spawner.Spawn<Unit>(spawnable.ProgramPath,
