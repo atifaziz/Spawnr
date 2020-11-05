@@ -359,36 +359,41 @@ namespace Spawnr
                      Func<string, T>? stdout, Func<string, T>? stderr) =>
             Spawn(path, args).Input(stdin).CaptureOutputs(stdout, stderr);
 
-        public static async Task<int> Execute(this ISpawnable spawnable,
-                                              CancellationToken cancellationToken = default)
+        public static Task<int> Execute(this ISpawnable spawnable,
+                                        CancellationToken cancellationToken = default)
         {
-            var tcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+            if (spawnable is null) throw new ArgumentNullException(nameof(spawnable));
 
-            using var subscription =
-                spawnable.Spawner.Spawn<Unit>(spawnable.ProgramPath,
-                                              spawnable.Options, null, null)
-                                 .Subscribe(
-                                     onNext: delegate {},
-                                     onError: e =>
-                                     {
-                                         if (e is ExternalProcessException epe)
-                                             tcs.TrySetResult(epe.ExitCode);
-                                         else
-                                             tcs.TrySetException(e);
-                                     },
-                                     onCompleted: () => tcs.TrySetResult(0));
+            return _(); async Task<int> _()
+            {
+                var tcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-            using var registration
-                = cancellationToken.CanBeCanceled
-                ? cancellationToken.Register(useSynchronizationContext: false,
-                                             callback: () =>
-                                             {
-                                                 tcs.TrySetCanceled(cancellationToken);
-                                                 subscription.Dispose();
-                                             })
-                : default;
+                using var subscription =
+                    spawnable.Spawner.Spawn<Unit>(spawnable.ProgramPath,
+                                                  spawnable.Options, null, null)
+                                     .Subscribe(
+                                         onNext: delegate {},
+                                         onError: e =>
+                                         {
+                                             if (e is ExternalProcessException epe)
+                                                 tcs.TrySetResult(epe.ExitCode);
+                                             else
+                                                 tcs.TrySetException(e);
+                                         },
+                                         onCompleted: () => tcs.TrySetResult(0));
 
-            return await tcs.Task.ConfigureAwait(false);
+                using var registration
+                    = cancellationToken.CanBeCanceled
+                    ? cancellationToken.Register(useSynchronizationContext: false,
+                                                 callback: () =>
+                                                 {
+                                                     tcs.TrySetCanceled(cancellationToken);
+                                                     subscription.Dispose();
+                                                 })
+                    : default;
+
+                return await tcs.Task.ConfigureAwait(false);
+            }
         }
     }
 }
