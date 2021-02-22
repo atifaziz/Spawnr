@@ -72,8 +72,8 @@ namespace Spawnr.Tests
         public event EventHandler? LeavingBeginErrorReadLine;
         public event EventHandler? EnteringBeginOutputReadLine;
         public event EventHandler? LeavingBeginOutputReadLine;
-        public event EventHandler? EnteringTryKill;
-        public event EventHandler? LeavingTryKill;
+        public event EventHandler? EnteringKill;
+        public event EventHandler? LeavingKill;
 
         public bool BeginErrorReadLineCalled;
         public Exception? BeginErrorReadLineException;
@@ -82,8 +82,8 @@ namespace Spawnr.Tests
         public bool DisposeCalled;
         public bool StartCalled;
         public Exception? StartException;
-        public bool TryKillCalled;
-        public Exception? TryKillException;
+        public bool KillCalled;
+        public Exception? KillException;
 
         public void BeginErrorReadLine() =>
             OnCall(ref BeginErrorReadLineCalled,
@@ -109,26 +109,15 @@ namespace Spawnr.Tests
             FireExited();
         }
 
-        public bool TryKill([MaybeNullWhen(true)] out Exception exception)
+        public void Kill()
         {
-            OnCall(ref TryKillCalled, EnteringTryKill);
-            switch (TryKillException)
+            OnCall(ref KillCalled, EnteringKill);
+            LeavingKill?.Invoke(this, EventArgs.Empty);
+            switch (KillException)
             {
-                case null:
-                    exception = null;
-                    OnLeaving();
-                    return true;
-                case Win32Exception _:
-                case InvalidOperationException _:
-                    exception = TryKillException;
-                    OnLeaving();
-                    return false;
-                default:
-                    OnLeaving();
-                    throw TryKillException;
+                case null: return;
+                default: throw KillException;
             }
-
-            void OnLeaving() => LeavingTryKill?.Invoke(this, EventArgs.Empty);
         }
 
         void OnCall(ref bool called,

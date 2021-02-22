@@ -75,7 +75,7 @@ namespace Spawnr.Tests
                 TestSpawn(SpawnOptions, notifications,
                           s => $"out: {s}",
                           s => $"err: {s}",
-                          p => p.TryKillException = new Exception("Some error."));
+                          p => p.KillException = new Exception("Some error."));
             subscription.Dispose();
 
             Assert.Pass();
@@ -155,7 +155,7 @@ namespace Spawnr.Tests
             }));
 
             var process = subscription.Tag;
-            Assert.That(process.TryKillCalled, Is.True);
+            Assert.That(process.KillCalled, Is.True);
         }
 
         [Test]
@@ -179,7 +179,7 @@ namespace Spawnr.Tests
             }));
 
             var process = subscription.Tag;
-            Assert.That(process.TryKillCalled, Is.True);
+            Assert.That(process.KillCalled, Is.True);
         }
 
         [Test]
@@ -335,7 +335,7 @@ namespace Spawnr.Tests
                             StartException = null,
                             BeginErrorReadLineException = null,
                             BeginOutputReadLineException = null,
-                            TryKillException = null,
+                            KillException = null,
                         };
                         foreach (var modifier in processModifiers)
                             modifier(process);

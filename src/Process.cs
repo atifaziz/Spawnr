@@ -37,34 +37,18 @@ namespace Spawnr
         StreamWriter StandardInput { get; }
 
         void Start();
-        bool TryKill([MaybeNullWhen(true)] out Exception exception);
+        void Kill();
         void BeginErrorReadLine();
         void BeginOutputReadLine();
     }
 
-    sealed class Process : IProcess
+    static class ProcessExtensions
     {
-        readonly SysProcess _process;
-
-        public Process(SysProcess process) =>
-            _process = process;
-
-        public int Id => _process.Id;
-        public int ExitCode => _process.ExitCode;
-
-        public bool EnableRaisingEvents
-        {
-            get => _process.EnableRaisingEvents;
-            set => _process.EnableRaisingEvents = value;
-        }
-
-        public void Start() => _ = _process.Start();
-
-        public bool TryKill([MaybeNullWhen(true)] out Exception exception)
+        public static bool TryKill(this IProcess process, [MaybeNullWhen(true)] out Exception exception)
         {
             try
             {
-                _process.Kill();
+                process.Kill();
                 exception = null;
                 return true;
             }
@@ -86,6 +70,26 @@ namespace Spawnr
                 return false;
             }
         }
+    }
+
+    sealed class Process : IProcess
+    {
+        readonly SysProcess _process;
+
+        public Process(SysProcess process) =>
+            _process = process;
+
+        public int Id => _process.Id;
+        public int ExitCode => _process.ExitCode;
+
+        public bool EnableRaisingEvents
+        {
+            get => _process.EnableRaisingEvents;
+            set => _process.EnableRaisingEvents = value;
+        }
+
+        public void Start() => _ = _process.Start();
+        public void Kill() => _process.Kill();
 
         public void BeginErrorReadLine() => _process.BeginErrorReadLine();
         public void BeginOutputReadLine() => _process.BeginOutputReadLine();
