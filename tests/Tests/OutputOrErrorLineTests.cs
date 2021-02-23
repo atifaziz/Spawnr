@@ -49,7 +49,7 @@ namespace Spawnr.Tests
         {
             var e = Assert.Throws<ArgumentNullException>(() =>
                 OutputOrErrorLine.Output(null!));
-            Assert.That(e.ParamName, Is.EqualTo("value"));
+            Assert.That(e?.ParamName, Is.EqualTo("value"));
         }
 
         [Test]
@@ -57,7 +57,7 @@ namespace Spawnr.Tests
         {
             var e = Assert.Throws<ArgumentNullException>(() =>
                 OutputOrErrorLine.Error(null!));
-            Assert.That(e.ParamName, Is.EqualTo("value"));
+            Assert.That(e?.ParamName, Is.EqualTo("value"));
         }
 
         [Test]
@@ -65,7 +65,7 @@ namespace Spawnr.Tests
         {
             var e = Assert.Throws<ArgumentNullException>(() =>
                 OutputOrErrorLine.Output("foobar").Match(_ => 0, null!));
-            Assert.That(e.ParamName, Is.EqualTo("error"));
+            Assert.That(e?.ParamName, Is.EqualTo("error"));
         }
 
         [Test]
@@ -73,7 +73,7 @@ namespace Spawnr.Tests
         {
             var e = Assert.Throws<ArgumentNullException>(() =>
                 OutputOrErrorLine.Output("foobar").Match(null!, _ => 0));
-            Assert.That(e.ParamName, Is.EqualTo("output"));
+            Assert.That(e?.ParamName, Is.EqualTo("output"));
         }
 
         [Test]
