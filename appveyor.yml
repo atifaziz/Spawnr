@@ -23,7 +23,7 @@ install:
 - ps: |-
     if ($isWindows) {
         ./dotnet-install.ps1 -JsonFile global.json
-        ./dotnet-install.ps1 -Version 3.1.12 -Runtime
+        ./dotnet-install.ps1 -Version 3.1.12 -Runtime dotnet
     }
 - sh: curl -OsSL https://dot.net/v1/dotnet-install.sh
 - sh: chmod +x dotnet-install.sh
