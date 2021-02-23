@@ -1,9 +1,7 @@
 namespace Spawnr.Tests
 {
     using System;
-    using System.ComponentModel;
     using System.Diagnostics;
-    using System.Diagnostics.CodeAnalysis;
     using System.IO;
     using System.Reflection;
 
