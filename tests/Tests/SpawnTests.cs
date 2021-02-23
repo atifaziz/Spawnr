@@ -489,7 +489,6 @@ namespace Spawnr.Tests
                                              (stdout, stderr) => (from e in stdout select e.Value,
                                                                   from e in stderr select e.Value));
 
-
                 Assert.That(stdout, Is.EqualTo(new[]
                 {
                     "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
