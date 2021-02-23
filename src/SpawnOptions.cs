@@ -189,13 +189,11 @@ namespace Spawnr
         }
 
         public static SpawnOptions IgnoreExitCode(this SpawnOptions options)
-            => options is null
-             ? throw new ArgumentNullException(nameof(options))
+            => options is null ? throw new ArgumentNullException(nameof(options))
              : options.WithExitCodeErrorFunction(_ => null);
 
         public static SpawnOptions EmptyInput(this SpawnOptions options)
-            => options is null
-             ? throw new ArgumentNullException(nameof(options))
+            => options is null ? throw new ArgumentNullException(nameof(options))
              : options.WithInput(Observable.Empty<OutputOrErrorLine>());
 
         public static void Update(this SpawnOptions options, ProcessStartInfo startInfo)
