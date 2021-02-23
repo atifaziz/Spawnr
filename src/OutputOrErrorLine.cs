@@ -58,11 +58,8 @@ namespace Spawnr
     [DebuggerDisplay("{" + nameof(GetDebuggerDisplay) + "(),nq}")]
     public readonly struct OutputOrErrorLine : IOutputOrErrorLine
     {
-        public static OutputOrErrorLine Output(string value) =>
-            new OutputOrErrorLine(OutputOrErrorKind.Output, value);
-
-        public static OutputOrErrorLine Error(string value) =>
-            new OutputOrErrorLine(OutputOrErrorKind.Error, value);
+        public static OutputOrErrorLine Output(string value) => new(OutputOrErrorKind.Output, value);
+        public static OutputOrErrorLine Error(string value) => new(OutputOrErrorKind.Error, value);
 
         public OutputOrErrorLine(OutputOrErrorKind kind, string value)
         {

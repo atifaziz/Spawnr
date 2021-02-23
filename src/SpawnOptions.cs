@@ -45,15 +45,15 @@ namespace Spawnr
     public sealed class SpawnOptions
     {
         public static SpawnOptions Create() =>
-            new SpawnOptions(ProgramArguments.Empty,
-                             System.Environment.CurrentDirectory,
-                             ImmutableArray.CreateRange(
-                                 from DictionaryEntry e in System.Environment.GetEnvironmentVariables()
-                                 select KeyValuePair.Create((string)e.Key, (string)e.Value)),
-                             input: null,
-                             exitCodeErrorFunction: null,
-                             psi => new Process(new SysProcess { StartInfo = psi }),
-                             _ => null);
+            new(ProgramArguments.Empty,
+                System.Environment.CurrentDirectory,
+                ImmutableArray.CreateRange(
+                    from DictionaryEntry e in System.Environment.GetEnvironmentVariables()
+                    select KeyValuePair.Create((string)e.Key, (string)e.Value)),
+                input: null,
+                exitCodeErrorFunction: null,
+                psi => new Process(new SysProcess { StartInfo = psi }),
+                _ => null);
 
         SpawnOptions(ProgramArguments arguments, string workingDirectory,
                      ImmutableArray<KeyValuePair<string, string>> environment,

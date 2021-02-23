@@ -168,7 +168,7 @@ namespace Spawnr.Tests
                 TestSpawn(SpawnOptions, notifications,
                           s => $"out: {s}",
                           s => $"err: {s}",
-                          p => p.EnteringBeginOutputReadLine += (sender, args) =>
+                          p => p.EnteringBeginOutputReadLine += (_, _) =>
                                   p.FireOutputDataReceived("foobar"),
                           p => p.BeginErrorReadLineException = error);
 

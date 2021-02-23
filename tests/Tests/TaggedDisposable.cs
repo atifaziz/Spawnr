@@ -24,8 +24,7 @@ using System;
 
 static partial class TaggedDisposable
 {
-    public static TaggedDisposable<T> Create<T>(IDisposable resource, T tag) =>
-        new TaggedDisposable<T>(resource, tag);
+    public static TaggedDisposable<T> Create<T>(IDisposable resource, T tag) => new(resource, tag);
 }
 
 sealed partial class TaggedDisposable<T> : IDisposable

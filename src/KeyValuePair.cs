@@ -17,6 +17,5 @@
 static class KeyValuePair
 {
     public static System.Collections.Generic.KeyValuePair<TKey, TValue>
-        Create<TKey, TValue>(TKey key, TValue value) =>
-            new System.Collections.Generic.KeyValuePair<TKey, TValue>(key, value);
+        Create<TKey, TValue>(TKey key, TValue value) => new(key, value);
 }

@@ -28,7 +28,7 @@ namespace Spawnr
 
     public sealed partial class ProgramArguments : ICollection<string>
     {
-        public static readonly ProgramArguments Empty = new ProgramArguments(null, ImmutableArray<string>.Empty);
+        public static readonly ProgramArguments Empty = new(null, ImmutableArray<string>.Empty);
 
         readonly string? _line;
         List<string>? _parsedLineArgs;

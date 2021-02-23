@@ -29,7 +29,7 @@ namespace Spawnr.Tests
             Exited?.Invoke(this, EventArgs.Empty);
 
         static readonly Lazy<Func<string?, DataReceivedEventArgs>>
-            DataReceivedEventArgsFactory = new Lazy<Func<string?, DataReceivedEventArgs>>(() =>
+            DataReceivedEventArgsFactory = new(() =>
             {
                 var ctor = typeof(DataReceivedEventArgs)
                                .GetConstructor(BindingFlags.NonPublic | BindingFlags.Instance,
