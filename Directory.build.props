@@ -7,6 +7,13 @@
     <LangVersion>8</LangVersion>
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <IsTestProject Condition="$(MSBuildProjectFile.EndsWith('.Tests.csproj', StringComparison.OrdinalIgnoreCase))">true</IsTestProject>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)\tests\InternalsVisibleToTests.cs"
+             Condition="Exists('$(MSBuildThisFileDirectory)\tests\InternalsVisibleToTests.cs') And '$(IsTestProject)' != 'true'"
+             Link="InternalsVisibleToTests.cs" />
+  </ItemGroup>
 
 </Project>
