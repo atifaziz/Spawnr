@@ -38,7 +38,7 @@ sealed partial class TaggedDisposable<T> : IDisposable
         Tag = tag;
     }
 
-    public T Tag { get; private set; }
+    public T Tag { get; }
 
     public void Dispose() => _disposable.Dispose();
 }
