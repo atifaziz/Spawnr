@@ -40,7 +40,7 @@ namespace Spawnr
         {
             public IObservable<T>
                 Spawn<T>(string path, SpawnOptions options,
-                      Func<string, T>? stdout, Func<string, T>? stderr) =>
+                         Func<string, T>? stdout, Func<string, T>? stderr) =>
                 Observable.Create<T>(observer =>
                     Spawner.Spawn(path, options, stdout, stderr, observer));
         }
