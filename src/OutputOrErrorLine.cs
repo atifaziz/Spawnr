@@ -100,7 +100,7 @@ namespace Spawnr
             where TLine : IOutputOrErrorLine =>
             line switch { null => throw new ArgumentNullException(nameof(line)),
                           (OutputOrErrorKind.Output, var s) => OutputOrErrorLine.Output(s),
-                          (_, var s) => OutputOrErrorLine.Error(s) };
+                          var (_, s) => OutputOrErrorLine.Error(s) };
 
         public static T Match<T>(this IOutputOrErrorLine line,
                                  Func<string, T> output, Func<string, T> error)

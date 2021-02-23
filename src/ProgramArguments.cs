@@ -62,7 +62,7 @@ namespace Spawnr
              : _parsedLineArgs ??= ParseArgumentsIntoList(line)
              : _args;
 
-        public int Count => _line is {} s && s.Length == 0 ? 0 : Args.Count;
+        public int Count => _line is { Length: 0 } ? 0 : Args.Count;
 
         IEnumerator IEnumerable.GetEnumerator() =>
             GetEnumerator();
