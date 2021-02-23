@@ -84,18 +84,18 @@ namespace Spawnr.Tests
         public Exception? KillException;
 
         public void BeginErrorReadLine() =>
-            OnCall(ref BeginErrorReadLineCalled,
+            OnCall(out BeginErrorReadLineCalled,
                    EnteringBeginErrorReadLine, LeavingBeginErrorReadLine,
                    BeginErrorReadLineException);
 
         public void BeginOutputReadLine() =>
-            OnCall(ref BeginOutputReadLineCalled,
+            OnCall(out BeginOutputReadLineCalled,
                    EnteringBeginOutputReadLine, LeavingBeginOutputReadLine,
                    BeginOutputReadLineException);
 
-        public void Dispose() => OnCall(ref DisposeCalled);
+        public void Dispose() => OnCall(out DisposeCalled);
 
-        public void Start() => OnCall(ref StartCalled,
+        public void Start() => OnCall(out StartCalled,
                                       EnteringStart, LeavingStart,
                                       StartException);
 
@@ -109,7 +109,7 @@ namespace Spawnr.Tests
 
         public void Kill()
         {
-            OnCall(ref KillCalled, EnteringKill);
+            OnCall(out KillCalled, EnteringKill);
             LeavingKill?.Invoke(this, EventArgs.Empty);
             switch (KillException)
             {
@@ -118,7 +118,7 @@ namespace Spawnr.Tests
             }
         }
 
-        void OnCall(ref bool called,
+        void OnCall(out bool called,
                     EventHandler? enteringHandler = null,
                     EventHandler? leavingHandler = null,
                     Exception? exception = null)
