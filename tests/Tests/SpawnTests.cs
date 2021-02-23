@@ -412,7 +412,7 @@ namespace Spawnr.Tests
                 var e = Assert.Throws<ExternalProcessException>(() =>
                     _ = SpawnTestApp().AddArgument("error").CaptureOutputs().AsEnumerable().ToArray());
 
-                Assert.That(e.Message, DoesMatchExitCodeErrorMessage(0xbd));
+                Assert.That(e?.Message, DoesMatchExitCodeErrorMessage(0xbd));
             }
 
             [Test]
@@ -561,7 +561,7 @@ namespace Spawnr.Tests
                 cts.CancelAfter(TimeSpan.FromSeconds(0.5));
                 var e = Assert.ThrowsAsync<TaskCanceledException>(async () =>
                     _ = await SpawnTestApp().AddArgument("sleep", "3").Execute(cts.Token));
-                Assert.That(e.Task, Is.Not.Null);
+                Assert.That(e?.Task, Is.Not.Null);
             }
         }
     }
