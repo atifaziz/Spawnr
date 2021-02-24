@@ -52,6 +52,7 @@ namespace Spawnr
                     select KeyValuePair.Create((string)e.Key, (string)e.Value)),
                 input: null,
                 exitCodeErrorFunction: null,
+                createNoWindow: false,
                 psi => new Process(new SysProcess { StartInfo = psi }),
                 _ => null);
 
@@ -59,6 +60,7 @@ namespace Spawnr
                      ImmutableArray<KeyValuePair<string, string>> environment,
                      IObservable<OutputOrErrorLine>? input,
                      Func<ExitCodeErrorArgs, Exception?>? exitCodeErrorFunction,
+                     bool createNoWindow,
                      Func<ProcessStartInfo, IProcess> processFactory,
                      Func<Exception, Exception?> killErrorFunction)
         {
@@ -75,6 +77,7 @@ namespace Spawnr
             this(other.Arguments, other.WorkingDirectory, other.Environment,
                  other.Input,
                  other.ExitCodeErrorFunction,
+                 other.CreateNoWindow,
                  other.ProcessFactory, other.KillErrorFunction) {}
 
         public ProgramArguments Arguments { get; private set; }
@@ -82,6 +85,7 @@ namespace Spawnr
         public ImmutableArray<KeyValuePair<string, string>> Environment { get; private set; }
         public IObservable<OutputOrErrorLine>? Input { get; private set; }
         public Func<ExitCodeErrorArgs, Exception?>? ExitCodeErrorFunction { get; private set; }
+        public bool CreateNoWindow { get; private set; }
         internal Func<ProcessStartInfo, IProcess> ProcessFactory { get; private set; }
         internal Func<Exception, Exception?> KillErrorFunction { get; private set; }
 
@@ -105,6 +109,10 @@ namespace Spawnr
         public SpawnOptions WithExitCodeErrorFunction(Func<ExitCodeErrorArgs, Exception?>? value)
             => value == ExitCodeErrorFunction ? this
              : new SpawnOptions(this) { ExitCodeErrorFunction = value };
+
+        public SpawnOptions WithCreateNoWindow(bool value)
+            => value == CreateNoWindow ? this
+             : new SpawnOptions(this) { CreateNoWindow = value };
 
         internal SpawnOptions WithProcessFactory(Func<ProcessStartInfo, IProcess> value)
             => value is null ? throw new ArgumentNullException(nameof(value))

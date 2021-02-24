@@ -19,6 +19,8 @@ namespace Spawnr.Tests
 
             foreach (var e in options.Environment)
                 Assert.That(env[e.Key], Is.EqualTo(e.Value));
+
+            Assert.That(options.CreateNoWindow, Is.False);
         }
 
         [Test]

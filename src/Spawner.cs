@@ -88,7 +88,7 @@ namespace Spawnr
 
             var psi = new ProcessStartInfo(path)
             {
-                CreateNoWindow         = true,
+                CreateNoWindow         = options.CreateNoWindow, // effective only on Windows
                 UseShellExecute        = false,
                 RedirectStandardInput  = options.Input is {},
                 RedirectStandardOutput = stdout is {},

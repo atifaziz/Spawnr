@@ -28,7 +28,7 @@ namespace Spawnr.Tests
 
             var psi = process.StartInfo;
             Assert.That(psi, Is.Not.Null);
-            Assert.That(psi.CreateNoWindow, Is.True);
+            Assert.That(psi.CreateNoWindow, Is.False);
             Assert.That(psi.UseShellExecute, Is.False);
             Assert.That(psi.RedirectStandardError, Is.True);
             Assert.That(psi.RedirectStandardOutput, Is.True);
