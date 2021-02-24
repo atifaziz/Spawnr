@@ -251,11 +251,10 @@ namespace Spawnr
                     var args = new ExitCodeErrorArgs(path, options.Arguments, pid, process.ExitCode);
                     error = ef(args);
                 }
-                else
+                else if (process.ExitCode != 0)
                 {
-                    if (process.ExitCode != 0)
-                        error = new ExternalProcessException(process.ExitCode,
-                                    $"Process \"{Path.GetFileName(path)}\" (launched as the ID {pid}) ended with the non-zero exit code {process.ExitCode}.");
+                    error = new ExternalProcessException(process.ExitCode,
+                                                         $"Process \"{Path.GetFileName(path)}\" (launched as the ID {pid}) ended with the non-zero exit code {process.ExitCode}.");
                 }
 
                 if (error is null)
