@@ -99,8 +99,10 @@ namespace Spawnr
                           (OutputOrErrorKind.Output, var s) => OutputOrErrorLine.Output(s),
                           var (_, s) => OutputOrErrorLine.Error(s) };
 
-        public static T Match<T>(this IOutputOrErrorLine line,
-                                 Func<string, T> output, Func<string, T> error)
+        public static TResult Match<TLine, TResult>(this TLine line,
+                                                    Func<string, TResult> output,
+                                                    Func<string, TResult> error)
+            where TLine : IOutputOrErrorLine
             => line is null ? throw new ArgumentNullException(nameof(line))
              : output is null ? throw new ArgumentNullException(nameof(output))
              : error is null ? throw new ArgumentNullException(nameof(error))
