@@ -69,6 +69,7 @@ namespace Spawnr
             Environment = environment;
             Input = input;
             ExitCodeErrorFunction = exitCodeErrorFunction;
+            CreateNoWindow = createNoWindow;
             ProcessFactory = processFactory;
             KillErrorFunction = killErrorFunction;
         }
@@ -201,6 +202,11 @@ namespace Spawnr
              ? throw new ArgumentNullException(nameof(options))
              : options.WithExitCodeErrorFunction(_ => null);
 
+        public static SpawnOptions CreateNoWindow(this SpawnOptions options)
+            => options is null
+             ? throw new ArgumentNullException(nameof(options))
+             : options.WithCreateNoWindow(true);
+
         public static SpawnOptions EmptyInput(this SpawnOptions options)
             => options is null
              ? throw new ArgumentNullException(nameof(options))
@@ -211,6 +217,7 @@ namespace Spawnr
             if (options is null) throw new ArgumentNullException(nameof(options));
             if (startInfo is null) throw new ArgumentNullException(nameof(startInfo));
 
+            startInfo.CreateNoWindow = options.CreateNoWindow;
             startInfo.WorkingDirectory = options.WorkingDirectory;
 
             var environment = startInfo.Environment;

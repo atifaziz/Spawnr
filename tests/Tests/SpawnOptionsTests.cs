@@ -28,12 +28,16 @@ namespace Spawnr.Tests
         {
             var psi = new ProcessStartInfo();
 
+            Assert.That(psi.CreateNoWindow, Is.False);
             Assert.That(psi.WorkingDirectory, Is.Empty);
             Assert.That(psi.ArgumentList, Is.Empty);
 
-            var options = SpawnOptions.Create().AddArgument("foo", "bar", "baz");
+            var options = SpawnOptions.Create()
+                                      .AddArgument("foo", "bar", "baz")
+                                      .CreateNoWindow();
             options.Update(psi);
 
+            Assert.That(psi.CreateNoWindow, Is.True);
             Assert.That(psi.WorkingDirectory, Is.EqualTo(options.WorkingDirectory));
             Assert.That(psi.ArgumentList, Is.EqualTo(options.Arguments));
 
