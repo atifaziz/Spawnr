@@ -153,6 +153,9 @@ namespace Spawnr
         public static ISpawnable WorkingDirectory(this ISpawnable spawnable, string value) =>
             spawnable.Options(opts => opts.WithWorkingDirectory(value));
 
+        public static ISpawnable CreateNoWindow(this ISpawnable spawnable) =>
+            spawnable.Options(opts => opts.CreateNoWindow());
+
         public static ISpawnable Input(this ISpawnable spawnable,
                                        IObservable<OutputOrErrorLine>? value) =>
             spawnable.Options(opts => opts.WithInput(value));
