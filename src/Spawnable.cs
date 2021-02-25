@@ -373,22 +373,22 @@ namespace Spawnr
 
     partial class Spawnable
     {
-        public static Task<int> Execute(this ISpawnable spawnable,
-                                        CancellationToken cancellationToken = default) =>
+        public static Task<ExitCode> Execute(this ISpawnable spawnable,
+                                             CancellationToken cancellationToken = default) =>
             spawnable.Execute(ExecuteOptions.None, cancellationToken);
 
-        public static Task<int> Execute(this ISpawnable spawnable,
-                                        ExecuteOptions options,
-                                        CancellationToken cancellationToken = default)
+        public static Task<ExitCode> Execute(this ISpawnable spawnable,
+                                             ExecuteOptions options,
+                                             CancellationToken cancellationToken = default)
         {
             if (spawnable is null) throw new ArgumentNullException(nameof(spawnable));
 
-            return _(); async Task<int> _()
+            return _(); async Task<ExitCode> _()
             {
                 static Func<string, Unit>? OptFunc(ExecuteOptions options, ExecuteOptions flags) =>
                     (options & flags) == flags ? new Func<string, Unit>(_ => default) : null;
 
-                var tcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+                var tcs = new TaskCompletionSource<ExitCode>(TaskCreationOptions.RunContinuationsAsynchronously);
 
                 using var subscription =
                     spawnable.Spawner.Spawn(spawnable.ProgramPath,

@@ -544,14 +544,14 @@ namespace Spawnr.Tests
             public async Task ExecuteZeroExit()
             {
                 var exitCode = await SpawnTestApp().AddArgument("nop").Execute();
-                Assert.That(exitCode, Is.Zero);
+                Assert.That((int)exitCode, Is.Zero);
             }
             [Test]
 
             public async Task ExecuteNonZeroExit()
             {
                 var exitCode = await SpawnTestApp().AddArgument("exit", "42").Execute();
-                Assert.That(exitCode, Is.EqualTo(42));
+                Assert.That((int)exitCode, Is.EqualTo(42));
             }
 
             [Test]

@@ -22,13 +22,13 @@ namespace Spawnr
     [Serializable]
     public class ExternalProcessException : Exception
     {
-        public ExternalProcessException(int exitCode) :
+        public ExternalProcessException(ExitCode exitCode) :
             this(exitCode, null) {}
 
-        public ExternalProcessException(int exitCode, string? message) :
+        public ExternalProcessException(ExitCode exitCode, string? message) :
             this(exitCode, message, null) {}
 
-        public ExternalProcessException(int exitCode, string? message, Exception? inner) :
+        public ExternalProcessException(ExitCode exitCode, string? message, Exception? inner) :
             base(message ?? $"External process terminated with an exit code of {exitCode}.", inner) =>
             ExitCode = exitCode;
 
@@ -36,7 +36,7 @@ namespace Spawnr
             base(info, context) =>
             ExitCode = info.GetInt32(nameof(ExitCode));
 
-        public int ExitCode { get; }
+        public ExitCode ExitCode { get; }
 
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {

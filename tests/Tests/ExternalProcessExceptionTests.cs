@@ -12,7 +12,7 @@ namespace Spawnr.Tests
         {
             var e = new ExternalProcessException(42);
 
-            Assert.That(e.ExitCode, Is.EqualTo(42));
+            Assert.That((int)e.ExitCode, Is.EqualTo(42));
             Assert.That(e.Message, Is.EqualTo("External process terminated with an exit code of 42."));
             Assert.That(e.InnerException, Is.Null);
         }
@@ -22,7 +22,7 @@ namespace Spawnr.Tests
         {
             var e = new ExternalProcessException(42, "External process failed.");
 
-            Assert.That(e.ExitCode, Is.EqualTo(42));
+            Assert.That((int)e.ExitCode, Is.EqualTo(42));
             Assert.That(e.Message, Is.EqualTo("External process failed."));
             Assert.That(e.InnerException, Is.Null);
         }
@@ -33,7 +33,7 @@ namespace Spawnr.Tests
             var inner = new Exception();
             var e = new ExternalProcessException(42, "External process failed.", inner);
 
-            Assert.That(e.ExitCode, Is.EqualTo(42));
+            Assert.That((int)e.ExitCode, Is.EqualTo(42));
             Assert.That(e.Message, Is.EqualTo("External process failed."));
             Assert.That(e.InnerException, Is.SameAs(inner));
         }
