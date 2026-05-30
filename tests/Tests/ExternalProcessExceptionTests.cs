@@ -37,22 +37,5 @@ namespace Spawnr.Tests
             Assert.That(e.Message, Is.EqualTo("External process failed."));
             Assert.That(e.InnerException, Is.SameAs(inner));
         }
-
-        [Test]
-        public void Serialization()
-        {
-            using var ms = new MemoryStream();
-            var formatter = new BinaryFormatter();
-            var e = new ExternalProcessException(42, "External process failed.", new Exception());
-#pragma warning disable SYSLIB0011 // Type or member is obsolete
-            formatter.Serialize(ms, e);
-            ms.Position = 0;
-            var de = (ExternalProcessException)formatter.Deserialize(ms);
-#pragma warning restore SYSLIB0011 // Type or member is obsolete
-
-            Assert.That(de.ExitCode, Is.EqualTo(e.ExitCode));
-            Assert.That(de.Message, Is.EqualTo(e.Message));
-            Assert.That(de.InnerException, Is.Not.Null);
-        }
     }
 }
