@@ -199,7 +199,7 @@ namespace Spawnr.Tests
             var notification = notifications.Single();
             Assert.That(notification.Kind, Is.EqualTo(NotificationKind.OnError));
             Assert.That(notification.Exception, Is.TypeOf<ExternalProcessException>());
-            Assert.That(notification.Exception.Message,
+            Assert.That(notification.Exception?.Message,
                         Is.EqualTo("Process \"dummy\" (launched as the ID 123) ended with the non-zero exit code 42."));
         }
 

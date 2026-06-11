@@ -49,7 +49,7 @@ namespace Spawnr
                 System.Environment.CurrentDirectory,
                 ImmutableArray.CreateRange(
                     from DictionaryEntry e in System.Environment.GetEnvironmentVariables()
-                    select KeyValuePair.Create((string)e.Key, (string)e.Value)),
+                    select KeyValuePair.Create((string)e.Key, (string)e.Value!)),
                 input: null,
                 exitCodeErrorFunction: null,
                 createNoWindow: false,
@@ -225,14 +225,10 @@ namespace Spawnr
             foreach (var e in options.Environment)
                 environment.Add(e.Key, e.Value);
 
-#if PROCESS_ARG_LIST
             var args = startInfo.ArgumentList;
             args.Clear();
             foreach (var arg in options.Arguments)
                 args.Add(arg);
-#else
-            startInfo.Arguments = options.Arguments.ToString();
-#endif
         }
     }
 }

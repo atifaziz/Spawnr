@@ -422,8 +422,6 @@ namespace Spawnr
     }
 }
 
-#if ASYNC_STREAMS
-
 namespace Spawnr
 {
     using System;
@@ -469,10 +467,8 @@ namespace Spawnr
 
                 var succeeded = queue.TryDequeue(out var item);
                 Debug.Assert(succeeded);
-                yield return item;
+                yield return item!;
             }
         }
     }
 }
-
-#endif // ASYNC_STREAMS

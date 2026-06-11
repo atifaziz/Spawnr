@@ -163,18 +163,18 @@ namespace Spawnr
                             {
                                 try
                                 {
-                                    switch (n.Kind)
+                                    switch (n)
                                     {
-                                        case NotificationKind.OnNext when n.Value is (OutputOrErrorKind.Output, var line):
+                                        case { Kind: NotificationKind.OnNext, Value: (OutputOrErrorKind.Output, var line) }:
                                             await writer.WriteLineAsync(line).ConfigureAwait(false);
                                             break;
-                                        case NotificationKind.OnNext when n.Value is (OutputOrErrorKind.Error, var line)
-                                                                       && stderr is {}:
+                                        case { Kind: NotificationKind.OnNext, Value: (OutputOrErrorKind.Error, var line) }
+                                            when stderr is {}:
                                             observer.OnNext(stderr(line));
                                             break;
-                                        case NotificationKind.OnError:
-                                            throw n.Exception;
-                                        case NotificationKind.OnCompleted:
+                                        case { Kind: NotificationKind.OnError, Exception: { } exception }:
+                                            throw exception;
+                                        case { Kind: NotificationKind.OnCompleted }:
                                             await writer.FlushAsync().ConfigureAwait(false);
                                             writer.Close();
                                             break;
