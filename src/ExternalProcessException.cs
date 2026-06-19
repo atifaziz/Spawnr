@@ -18,7 +18,6 @@ namespace Spawnr
 {
     using System;
 
-    [Serializable]
     public class ExternalProcessException : Exception
     {
         public ExternalProcessException(ExitCode exitCode) :
