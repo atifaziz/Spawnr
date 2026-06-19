@@ -18,7 +18,6 @@ namespace Spawnr
 {
     using System;
     using System.Diagnostics;
-    using System.IO;
     using System.Reactive;
     using System.Reactive.Disposables;
     using System.Reactive.Linq;
@@ -246,15 +245,10 @@ namespace Spawnr
 
                 Exception? error = null;
 
-                if (options.ExitCodeErrorFunction is {} ef)
+                if (process.ExitCode != 0 && options.ExitCodeErrorFunction is {} ef)
                 {
                     var args = new ExitCodeErrorArgs(path, options.Arguments, pid, process.ExitCode);
                     error = ef(args);
-                }
-                else if (process.ExitCode != 0)
-                {
-                    error = new ExternalProcessException(process.ExitCode,
-                                                         $"Process \"{Path.GetFileName(path)}\" (launched as the ID {pid}) ended with the non-zero exit code {process.ExitCode}.");
                 }
 
                 if (error is null)

@@ -47,5 +47,46 @@ namespace Spawnr.Tests
             foreach (var e in options.Environment)
                 Assert.That(env[e.Key], Is.EqualTo(e.Value));
         }
+
+        [Test]
+        public void ExitCodeErrorFunction_IsDefaulted()
+        {
+            var options = SpawnOptions.Create();
+
+            Assert.That(options.ExitCodeErrorFunction, Is.Not.Null);
+            Assert.That(options.ExitCodeErrorFunction, Is.SameAs(SpawnOptions.DefaultExitCodeErrorFunction));
+        }
+
+        [TestCase(0)]
+        [TestCase(42)]
+        public void DefaultExitCodeErrorFunction(int exitCode)
+        {
+            var ex = SpawnOptions.DefaultExitCodeErrorFunction(new ExitCodeErrorArgs("app", ProgramArguments.Var("arg1", "arg2"), 123, exitCode));
+
+            Assert.That(ex.Message, Is.EqualTo(FormattableString.Invariant($"""Process "app" (launched as the ID 123) ended with the non-zero exit code {exitCode}.""")));
+            Assert.That((int)ex.ExitCode, Is.EqualTo(exitCode));
+        }
+
+        [Test]
+        public void IgnoreExitCode()
+        {
+            var options = SpawnOptions.Create();
+            var before = options.ExitCodeErrorFunction;
+            var after = options.IgnoreExitCode().ExitCodeErrorFunction;
+
+            Assert.That(before, Is.Not.Null);
+            Assert.That(after, Is.Null);
+        }
+
+        [Test]
+        public void RequireZeroExitCode_ResetsToDefaultExitCodeErrorFunction()
+        {
+            var options = SpawnOptions.Create().IgnoreExitCode();
+            var before = options.ExitCodeErrorFunction;
+            var after = options.RequireZeroExitCode().ExitCodeErrorFunction;
+
+            Assert.That(before, Is.Not.SameAs(after));
+            Assert.That(after, Is.SameAs(SpawnOptions.DefaultExitCodeErrorFunction));
+        }
     }
 }

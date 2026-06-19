@@ -21,6 +21,7 @@ namespace Spawnr
     using System.Collections.Generic;
     using System.Collections.Immutable;
     using System.Diagnostics;
+    using System.IO;
     using System.Linq;
     using System.Reactive.Linq;
     using System.Runtime.InteropServices;
@@ -44,6 +45,9 @@ namespace Spawnr
 
     public sealed class SpawnOptions
     {
+        public static readonly Func<ExitCodeErrorArgs, ExternalProcessException> DefaultExitCodeErrorFunction = args =>
+            new(args.ExitCode, $"""Process "{Path.GetFileName(args.Path)}" (launched as the ID {args.Pid}) ended with the non-zero exit code {args.ExitCode}.""");
+
         public static SpawnOptions Create() =>
             new(ProgramArguments.Empty,
                 System.Environment.CurrentDirectory,
@@ -51,7 +55,7 @@ namespace Spawnr
                     from DictionaryEntry e in System.Environment.GetEnvironmentVariables()
                     select KeyValuePair.Create((string)e.Key, (string)e.Value!)),
                 input: null,
-                exitCodeErrorFunction: null,
+                exitCodeErrorFunction: DefaultExitCodeErrorFunction,
                 createNoWindow: false,
                 psi => new Process(new SysProcess { StartInfo = psi }),
                 _ => null);
@@ -197,10 +201,15 @@ namespace Spawnr
                  : options;
         }
 
+        public static SpawnOptions RequireZeroExitCode(this SpawnOptions options)
+            => options is null
+             ? throw new ArgumentNullException(nameof(options))
+             : options.WithExitCodeErrorFunction(SpawnOptions.DefaultExitCodeErrorFunction);
+
         public static SpawnOptions IgnoreExitCode(this SpawnOptions options)
             => options is null
              ? throw new ArgumentNullException(nameof(options))
-             : options.WithExitCodeErrorFunction(_ => null);
+             : options.WithExitCodeErrorFunction(null);
 
         public static SpawnOptions CreateNoWindow(this SpawnOptions options)
             => options is null
