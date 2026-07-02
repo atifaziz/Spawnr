@@ -100,6 +100,12 @@ static int Run(Queue<string> args, StrongBox<bool> inputConsumedCell)
                              : throw new Exception("Missing seconds argument."));
                 break;
             }
+            case "head":
+            {
+                var count = TryDequeueArg(out var arg, ParseInt) ? arg : 10;
+                TransformInput(s => s, until: (_, i) => i >= count);
+                break;
+            }
             default:
             {
                 throw new InvalidCommandException($"Unknown command: {command}.");
@@ -109,24 +115,23 @@ static int Run(Queue<string> args, StrongBox<bool> inputConsumedCell)
 
     return 0;
 
-    void InputDo(Action<string> action)
+    void InputDo(Action<string> action, Func<string, int, bool>? until = null)
     {
         if (inputConsumedCell.Value)
             throw new Exception("Input has already been consumed.");
 
         inputConsumedCell.Value = true;
 
-        while (true)
+        for (var i = 0; Console.In.ReadLine() is { } line; i = checked(i + 1))
         {
-            var line = Console.In.ReadLine();
-            if (line is null)
+            if (until?.Invoke(line, i) is true)
                 break;
             action(line);
         }
     }
 
-    void TransformInput(Func<string, string> transformer) =>
-        InputDo(line => Console.WriteLine(transformer(line)));
+    void TransformInput(Func<string, string> transformer, Func<string, int, bool>? until = null) =>
+        InputDo(line => Console.WriteLine(transformer(line)), until);
 }
 
 sealed class InvalidCommandException : Exception
