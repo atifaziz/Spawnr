@@ -1,11 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
 try
 {
-    return Run(new Queue<string>(args));
+    var inputConsumed = new StrongBox<bool>(false);
+    return Run(new Queue<string>(args), inputConsumed);
 }
 catch (Exception e)
 {
@@ -13,92 +16,114 @@ catch (Exception e)
     return 0xbd;
 }
 
-static int Run(Queue<string> args)
+static int Run(Queue<string> args, StrongBox<bool> inputConsumedCell)
 {
-    switch (args.TryDequeue(out var command) ? command : null)
+    static string ParseString(string v) => v;
+    static int ParseInt(string v) => int.Parse(v, NumberStyles.None, CultureInfo.InvariantCulture);
+    static double ParseDouble(string v) => double.Parse(v, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture);
+
+    for (var c = 0; args.TryDequeue(out var command) || c is 0; c++)
     {
-        case null:
+        bool TryDequeueArg<T>([NotNullWhen(true)] out T? value, Func<string, T> parser)
         {
-            while (true)
+            (var success, value) =
+                args.TryDequeue(out var arg) && arg is not ";"
+                ? (true, parser(arg))
+                : default;
+            return success;
+        }
+
+        switch (command)
+        {
+            case null or "-":
             {
-                var line = Console.In.ReadLine();
-                if (line is null)
-                    return 0;
-                try
+                InputDo(line =>
                 {
-                    _ = Run(new Queue<string>(line.Split(' ')));
-                }
-                catch (InvalidCommandException e)
-                {
-                    Console.Error.WriteLine(e.Message);
-                }
+                    try
+                    {
+                        _ = Run(new Queue<string>(line.Split(' ')), inputConsumedCell);
+                    }
+                    catch (InvalidCommandException e)
+                    {
+                        Console.Error.WriteLine(e.Message);
+                    }
+                });
+                break;
             }
-        }
-        case "prefix":
-        {
-            var prefix = args.TryDequeue(out var arg) ? arg : "> ";
-            return TransformInput(s => prefix + s);
-        }
-        case "upper":
-            return TransformInput(s => s.ToUpperInvariant());
-        case "lower":
-            return TransformInput(s => s.ToLowerInvariant());
-        case "nop":
-            return 0;
-        case "lorem":
-        {
-            var streams = new[] { Console.Out, Console.Error };
-            var i = 0;
-            // cycle through counts & streams
-            for (var si = 0; args.TryDequeue(out var arg);
-                 si = (si + 1) % streams.Length)
+            case ";":
+                break;
+            case "prefix":
             {
-                var stream = streams[si];
-                var count = int.Parse(arg, NumberStyles.None, CultureInfo.InvariantCulture);
-                for (; count > 0; count--, i = (i + 1) % LoremIpsum.Samples.Length)
-                    stream.WriteLine(LoremIpsum.Samples[i]);
+                var prefix = TryDequeueArg(out var arg, ParseString) ? arg : "> ";
+                TransformInput(s => prefix + s);
+                break;
             }
-            return 0;
-        }
-        case "error":
-        {
-            var message = args.TryDequeue(out var arg) && arg.Length > 0
-                        ? arg
-                        : null;
-            throw new ApplicationException(message);
-        }
-        case "exit":
-        {
-            var code = args.TryDequeue(out var arg)
-                     ? int.Parse(arg, NumberStyles.None, CultureInfo.InvariantCulture)
-                     : 0;
-            Environment.Exit(code);
-            return code; // should never get here
-        }
-        case "sleep":
-        {
-            var duration = args.TryDequeue(out var arg)
-                         ? TimeSpan.FromSeconds(double.Parse(arg, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture))
-                         : throw new Exception("Missing seconds argument.");
-            Thread.Sleep(duration);
-            return 0;
-        }
-        default:
-        {
-            throw new InvalidCommandException($"Unknown command: {command}.");
+            case "upper":
+                TransformInput(s => s.ToUpperInvariant());
+                break;
+            case "lower":
+                TransformInput(s => s.ToLowerInvariant());
+                break;
+            case "nop":
+                break;
+            case "lorem":
+            {
+                var streams = new[] { Console.Out, Console.Error };
+                var i = 0;
+                // cycle through counts & streams
+                for (var si = 0; TryDequeueArg(out var count, ParseInt); si = (si + 1) % streams.Length)
+                {
+                    var stream = streams[si];
+                    for (; count > 0; count--, i = (i + 1) % LoremIpsum.Samples.Length)
+                        stream.WriteLine(LoremIpsum.Samples[i]);
+                }
+                break;
+            }
+            case "error":
+            {
+                throw new ApplicationException(TryDequeueArg(out var message, ParseString)
+                                               && message.Length > 0 ? message : null);
+            }
+            case "exit":
+            {
+                var code = TryDequeueArg(out var arg, ParseInt) ? arg : 0;
+                Environment.Exit(code);
+                return code; // should never get here
+            }
+            case "sleep":
+            {
+                Thread.Sleep(TryDequeueArg(out var seconds, ParseDouble)
+                             ? TimeSpan.FromSeconds(seconds)
+                             : throw new Exception("Missing seconds argument."));
+                break;
+            }
+            default:
+            {
+                throw new InvalidCommandException($"Unknown command: {command}.");
+            }
         }
     }
 
-    static int TransformInput(Func<string, string> transformer)
+    return 0;
+
+    void InputDo(Action<string> action)
     {
+        if (inputConsumedCell.Value)
+            throw new Exception("Input has already been consumed.");
+
+        inputConsumedCell.Value = true;
+
         while (true)
         {
             var line = Console.In.ReadLine();
             if (line is null)
-                return 0;
-            Console.WriteLine(transformer(line));
+                break;
+            action(line);
         }
     }
+
+    void TransformInput(Func<string, string> transformer) =>
+        InputDo(line => Console.WriteLine(transformer(line)));
 }
 
 sealed class InvalidCommandException : Exception
