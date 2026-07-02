@@ -64,6 +64,9 @@ static int Run(Queue<string> args, StrongBox<bool> inputConsumedCell)
             case "lower":
                 TransformInput(s => s.ToLowerInvariant());
                 break;
+            case "passthru" or "pass-thru" or "passthrough" or "pass-through":
+                TransformInput(s => s);
+                break;
             case "nop":
                 break;
             case "lorem":
